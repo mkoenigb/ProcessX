@@ -34,10 +34,16 @@ import os
 from qgis.core import QgsProcessingProvider
 from qgis.PyQt.QtGui import QIcon
 
-#from .processx_algorithm import ProcessXAlgorithm
-from .algorithms.JoinAttributesByNearestWithCondition import *
-from .algorithms.IntersectionWithCondition import *
-from .algorithms.CountFeaturesInFeaturesWithCondition import *
+# Vecotr - Conditional
+from .algorithms.vector_conditionals.JoinAttributesByNearestWithCondition import *
+from .algorithms.vector_conditionals.CountFeaturesInFeaturesWithCondition import *
+from .algorithms.vector_conditionals.SelectDuplicatesBySimilarity import *
+from .algorithms.vector_conditionals.ConditionalIntersection import *
+# Vector - Creation
+from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
+# OpenTripPlanner
+from .algorithms.opentripplanner.OtpRoutes import *
+from .algorithms.opentripplanner.OtpTraveltime import *
 
 pluginPath = os.path.split(os.path.dirname(__file__))[0]
 
@@ -60,11 +66,16 @@ class ProcessXProvider(QgsProcessingProvider):
         """
         Loads all algorithms belonging to this provider.
         """
-        #self.addAlgorithm(ProcessXAlgorithm())
-        # add additional algorithms here
+        # Vecotr - Conditional
         self.addAlgorithm(JoinAttributesByNearestWithCondition())
-        self.addAlgorithm(IntersectionWithCondition())
         self.addAlgorithm(CountFeaturesInFeaturesWithCondition())
+        self.addAlgorithm(SelectDuplicatesBySimilarity())
+        self.addAlgorithm(ConditionalIntersection())
+        # Vector - Creation
+        self.addAlgorithm(CreateTimepolygonsWithPointcount())
+        # OpenTripPlanner
+        self.addAlgorithm(OtpRoutes())
+        self.addAlgorithm(OtpTraveltime())
 
     def id(self):
         """
