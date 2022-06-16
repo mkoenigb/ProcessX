@@ -21,12 +21,20 @@ repository=https://github.com/mkoenigb/ProcessX
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=-
-    1.0 Initial Release
+    1.0 Initial Release. Added algorithms: 
+	- OpenTripPlanner Routes
+	- OpenTripPlanner Traveltime
+	- Conditional Intersection
+	- Count Features in Features with Condition
+	- Join attributes by nearest with Condition
+	- Select possible duplicate features by similarity
+	- Create Timepolygons with Pointcount
+	- New Layer from GeoJSON String
 
 # Tags are comma separated with spaces allowed
-tags=python
+tags=python,processing,provider,algorithm,analysis,conditional,creation,opentripplanner
 
-homepage=http://homepage
+homepage=https://github.com/mkoenigb/ProcessX
 category=Analysis
 icon=icon.png
 # experimental flag
