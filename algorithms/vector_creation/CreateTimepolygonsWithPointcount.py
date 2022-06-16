@@ -155,5 +155,5 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
         return self.tr('This Algorithm duplicates the polygons by the given interval input, '
                        'adds a from_datetime and to_datetime field to them '
                        'and counts the points intersecting with the polygon as '
-                       'if they are inbetween the timerange (> starttime and <= endtime)'
+                       'if they are inbetween the timerange (greater than starttime and smaller or equal endtime)'
                        )
