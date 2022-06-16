@@ -91,7 +91,7 @@ class OtpRoutes(QgsProcessingAlgorithm):
                 self.SERVER_URL, self.tr('URL to OTP-Server including port and path to router ending with an /'),'http://localhost:8080/otp/routers/default/'))
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.SOURCE_LYR, self.tr('Sourcelayer'), [QgsProcessing.TypeMapLayer], defaultValue='rad_fahrten'))
+                self.SOURCE_LYR, self.tr('Sourcelayer')))
         self.addParameter(
             QgsProcessingParameterField(
                 self.STARTLAT_FIELD, self.tr('Field containing Latitude of Startpoint'),'Start_Lat','SOURCE_LYR'))
