@@ -18,7 +18,7 @@ import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsSpatialIndexKDBush, QgsGeometry, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
+                       QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
 class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
     METHOD = 'METHOD'
@@ -30,12 +30,13 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
     OVERLAY_COMPARE_EXPRESSION = 'OVERLAY_COMPARE_EXPRESSION'
     COUNT_FIELDNAME = 'COUNT_FIELDNAME'
     OPERATION = 'OPERATION'
+    COUNT_MULTIPLE = 'COUNT_MULTIPLE'
     OUTPUT = 'OUTPUT'
 
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.METHOD, self.tr('Choose geometric predicate(s). If several are chosen it acts like an OR operator. (Overlay *predicate* Source; e.g. Overlay within Source)'), ['within','intersects','overlaps','contains','equals','crosses','touches','disjoint'], defaultValue = 1, allowMultiple = True))
+                self.METHOD, self.tr('Choose geometric predicate(s). If several are chosen it acts like an AND operator. (Overlay *predicate* Source; e.g. Overlay within Source)'), ['within','intersects','overlaps','contains','equals','crosses','touches','disjoint'], defaultValue = 1, allowMultiple = True))
         self.addParameter(
             QgsProcessingParameterFeatureSource(
                 self.SOURCE_LYR, self.tr('Source Layer (Features to add count to)')))
@@ -48,6 +49,9 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.OVERLAY_FILTER_EXPRESSION, self.tr('Filter-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.COUNT_MULTIPLE, self.tr('Count Features more than once (if not checked, a feature is only counted for the first match, ordered by feature id)'), optional = True, defaultValue = True))
         self.addParameter(
             QgsProcessingParameterString(
                 self.COUNT_FIELDNAME, self.tr('Count Fieldname'), defaultValue = 'count_n', optional = False))
@@ -93,6 +97,7 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
         overlay_filter_expression = self.parameterAsExpression(parameters, self.OVERLAY_FILTER_EXPRESSION, context)
         overlay_filter_expression = QgsExpression(overlay_filter_expression)
         count_fieldname = self.parameterAsString(parameters, self.COUNT_FIELDNAME, context)
+        count_multiple = self.parameterAsBool(parameters, self.COUNT_MULTIPLE, context)
         feedback.setProgressText('Prepare processing...')
         
         sourceoverlayequal = False
@@ -163,35 +168,53 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
                 
                 overlay_feat_geom = overlay_layer_idx.geometry(overlay_feat_id)
                 
-                geometrictest = False
+                geometrictest = []
                 if 0 in method:
                     if overlay_feat_geom.within(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                 if 1 in method:
                     if overlay_feat_geom.intersects(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                 if 2 in method:
                     if overlay_feat_geom.overlaps(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                 if 3 in method:
                     if overlay_feat_geom.contains(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                 if 4 in method:
                     if overlay_feat_geom.equals(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                 if 5 in method:
                     if overlay_feat_geom.crosses(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                 if 6 in method:
                     if overlay_feat_geom.touches(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                 if 7 in method:
                     if overlay_feat_geom.disjoint(source_feat_geom):
-                        geometrictest = True
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
                         
-                if geometrictest is True:
+                if not False in geometrictest:
                     if op is None:
                         matching_counter += 1
+                        if count_multiple is False:
+                            overlay_layer_idx.deleteFeature(overlay_layer_vl.getFeature(overlay_feat_id))
                     else:
                         overlay_feat = overlay_layer_vl.getFeature(overlay_feat_id)
                         overlay_compare_expression_context = QgsExpressionContext()
@@ -200,6 +223,8 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
                         overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
                         if op(source_compare_expression_result, overlay_compare_expression_result):
                             matching_counter += 1
+                            if count_multiple is False:
+                                overlay_layer_idx.deleteFeature(overlay_feat)
                         
             new_feat = QgsFeature(output_layer_fields)
             new_feat.setGeometry(source_feat_geom)
