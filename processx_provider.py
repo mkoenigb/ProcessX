@@ -41,6 +41,7 @@ from .algorithms.vector_conditionals.SelectDuplicatesBySimilarity import *
 from .algorithms.vector_conditionals.ConditionalIntersection import *
 # Vector - Creation
 from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
+from .algorithms.vector_creation.GeometryLayerFromGeojsonStringField import *
 # OpenTripPlanner
 from .algorithms.opentripplanner.OtpRoutes import *
 from .algorithms.opentripplanner.OtpTraveltime import *
@@ -73,6 +74,7 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(ConditionalIntersection())
         # Vector - Creation
         self.addAlgorithm(CreateTimepolygonsWithPointcount())
+        self.addAlgorithm(GeometryLayerFromGeojsonStringField())
         # OpenTripPlanner
         self.addAlgorithm(OtpRoutes())
         self.addAlgorithm(OtpTraveltime())
