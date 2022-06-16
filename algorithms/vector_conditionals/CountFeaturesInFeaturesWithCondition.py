@@ -16,7 +16,7 @@ License: GNU General Public License v3.0
 
 import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex,
+from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsSpatialIndexKDBush, QgsGeometry, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
 
@@ -66,7 +66,6 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
 
     def processAlgorithm(self, parameters, context, feedback):
         method = self.parameterAsEnums(parameters, self.METHOD, context)
-        print(method)
         source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context)
         source_layer_vl = self.parameterAsLayer(parameters, self.SOURCE_LYR, context)
         source_compare_expression = self.parameterAsExpression(parameters, self.SOURCE_COMPARE_EXPRESSION, context)
@@ -130,17 +129,22 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
             overlay_layer_vl = reproject_result['OUTPUT']
         
         feedback.setProgressText('Building spatial index...')
+        #kdbush = False
+        #if QgsWkbTypes.geometryType(overlay_layer_vl.wkbType()) == 0:
+        #    overlay_layer_idx = QgsSpatialIndexKDBush(overlay_layer_vl.getFeatures())
+        #    kdbush = True
         overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        if 7 in method:
+            all_overlay_feature_ids = [feat.id() for feat in overlay_layer_vl.getFeatures()]
         
         feedback.setProgressText('Start processing...')
         for current, source_feat in enumerate(source_layer_vl.getFeatures()):
             if feedback.isCanceled():
                 break
             source_feat_geom = source_feat.geometry()
-            
             #methods: ['within','intersects','overlaps','contains','equals','crosses','touches','disjoint']
             if 7 in method:
-                overlay_feature_ids = [feat.id() for feat in overlay_layer_vl.getFeatures()]
+                overlay_feature_ids = all_overlay_feature_ids
             else:
                 overlay_feature_ids = overlay_layer_idx.intersects(source_feat_geom.boundingBox())
             if sourceoverlayequal is True:
@@ -157,38 +161,39 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
                 if feedback.isCanceled():
                     break
                 
-                overlay_feat = overlay_layer_vl.getFeature(overlay_feat_id)
+                overlay_feat_geom = overlay_layer_idx.geometry(overlay_feat_id)
+                
                 geometrictest = False
                 if 0 in method:
-                    if overlay_feat.geometry().within(source_feat_geom):
+                    if overlay_feat_geom.within(source_feat_geom):
                         geometrictest = True
                 if 1 in method:
-                    if overlay_feat.geometry().intersects(source_feat_geom):
+                    if overlay_feat_geom.intersects(source_feat_geom):
                         geometrictest = True
                 if 2 in method:
-                    if overlay_feat.geometry().overlaps(source_feat_geom):
+                    if overlay_feat_geom.overlaps(source_feat_geom):
                         geometrictest = True
                 if 3 in method:
-                    if overlay_feat.geometry().contains(source_feat_geom):
+                    if overlay_feat_geom.contains(source_feat_geom):
                         geometrictest = True
                 if 4 in method:
-                    if overlay_feat.geometry().equals(source_feat_geom):
+                    if overlay_feat_geom.equals(source_feat_geom):
                         geometrictest = True
                 if 5 in method:
-                    if overlay_feat.geometry().crosses(source_feat_geom):
+                    if overlay_feat_geom.crosses(source_feat_geom):
                         geometrictest = True
                 if 6 in method:
-                    if overlay_feat.geometry().touches(source_feat_geom):
+                    if overlay_feat_geom.touches(source_feat_geom):
                         geometrictest = True
                 if 7 in method:
-                    if overlay_feat.geometry().disjoint(source_feat_geom):
+                    if overlay_feat_geom.disjoint(source_feat_geom):
                         geometrictest = True
                         
                 if geometrictest is True:
-                    
                     if op is None:
                         matching_counter += 1
                     else:
+                        overlay_feat = overlay_layer_vl.getFeature(overlay_feat_id)
                         overlay_compare_expression_context = QgsExpressionContext()
                         overlay_compare_expression_context.setFeature(overlay_feat)
                         overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
