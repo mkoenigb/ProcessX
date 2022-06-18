@@ -39,6 +39,7 @@ from .algorithms.vector_conditionals.JoinAttributesByNearestWithCondition import
 from .algorithms.vector_conditionals.CountFeaturesInFeaturesWithCondition import *
 from .algorithms.vector_conditionals.SelectDuplicatesBySimilarity import *
 from .algorithms.vector_conditionals.ConditionalIntersection import *
+from .algorithms.vector_conditionals.CountPointsInPolygonsWithCondition import * 
 # Vector - Creation
 from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
 from .algorithms.vector_creation.GeometryLayerFromGeojsonStringField import *
@@ -72,6 +73,7 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(CountFeaturesInFeaturesWithCondition())
         self.addAlgorithm(SelectDuplicatesBySimilarity())
         self.addAlgorithm(ConditionalIntersection())
+        self.addAlgorithm(CountPointsInPolygonsWithCondition())
         # Vector - Creation
         self.addAlgorithm(CreateTimepolygonsWithPointcount())
         self.addAlgorithm(GeometryLayerFromGeojsonStringField())
