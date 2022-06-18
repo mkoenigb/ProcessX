@@ -20,7 +20,7 @@ from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSp
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
-class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
+class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
     METHOD = 'METHOD'
     SOURCE_LYR = 'SOURCE_LYR'
     SOURCE_FILTER_EXPRESSION = 'SOURCE_FILTER_EXPRESSION'
@@ -36,22 +36,22 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.METHOD, self.tr('Choose geometric predicate(s). If several are chosen it acts like an AND operator. (Overlay *predicate* Source; e.g. Overlay within Source)'), ['within','intersects','overlaps','contains','equals','crosses','touches','disjoint'], defaultValue = 1, allowMultiple = True))
+                self.METHOD, self.tr('Choose geometric predicate'), ['within','intersects'], defaultValue = 1, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.SOURCE_LYR, self.tr('Source Layer (Features to add count to)')))
+                self.SOURCE_LYR, self.tr('Source Layer (Polygons to add count to)'), [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.OVERLAY_LYR, self.tr('Overlay Layer (Features to count)')))
+                self.OVERLAY_LYR, self.tr('Overlay Layer (Single-Points to count)'), [QgsProcessing.TypeVectorPoint]))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.OVERLAY_FILTER_EXPRESSION, self.tr('Filter-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterBoolean(
-                self.COUNT_MULTIPLE, self.tr('Count Features more than once (if not checked, a feature is only counted for the first match, ordered by feature id)'), optional = True, defaultValue = True))
+                self.COUNT_MULTIPLE, self.tr('Count Points more than once (if not checked, a feature is only counted for the first match, ordered by feature id)'), optional = True, defaultValue = True))
         self.addParameter(
             QgsProcessingParameterString(
                 self.COUNT_FIELDNAME, self.tr('Count Fieldname'), defaultValue = 'count_n', optional = False))
@@ -69,7 +69,7 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
                 self.OUTPUT, self.tr('Count')))
 
     def processAlgorithm(self, parameters, context, feedback):
-        method = self.parameterAsEnums(parameters, self.METHOD, context)
+        method = self.parameterAsInt(parameters, self.METHOD, context)
         source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context)
         source_layer_vl = self.parameterAsLayer(parameters, self.SOURCE_LYR, context)
         source_compare_expression = self.parameterAsExpression(parameters, self.SOURCE_COMPARE_EXPRESSION, context)
@@ -100,10 +100,6 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
         count_multiple = self.parameterAsBool(parameters, self.COUNT_MULTIPLE, context)
         feedback.setProgressText('Prepare processing...')
         
-        sourceoverlayequal = False
-        if source_layer_vl == overlay_layer_vl:
-            sourceoverlayequal = True
-        
         source_layer_fields = source_layer_vl.fields()
         output_layer_fields = source_layer_fields
         whilecounter = 0
@@ -119,7 +115,7 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
                                                output_layer_fields, source_layer_vl.wkbType(),
                                                source_layer_vl.sourceCrs())
-        
+            
         if source_filter_expression not in (QgsExpression(''),QgsExpression(None)):
             source_layer_vl = source_layer_vl.materialize(QgsFeatureRequest(source_filter_expression))
         if overlay_filter_expression not in (QgsExpression(''),QgsExpression(None)):
@@ -134,26 +130,23 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
             overlay_layer_vl = reproject_result['OUTPUT']
         
         feedback.setProgressText('Building spatial index...')
-        #kdbush = False
-        #if QgsWkbTypes.geometryType(overlay_layer_vl.wkbType()) == 0:
-        #    overlay_layer_idx = QgsSpatialIndexKDBush(overlay_layer_vl.getFeatures())
-        #    kdbush = True
-        overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
-        if 7 in method:
-            all_overlay_feature_ids = [feat.id() for feat in overlay_layer_vl.getFeatures()]
+        overlay_layer_idx = QgsSpatialIndexKDBush(overlay_layer_vl.getFeatures())
+        if overlay_layer_idx.size() == 0:
+            feedback.pushWarning('Spatial Index is empty! Check if your input point layer is of type Single-Point 2D. This algorithm does not support 2.5D, 3D or MultiPoints!')
+            
+        if op is not None: # dictonaries are more than two times faster than featurerequests
+            overlay_layer_dict = {feat.id():feat for feat in overlay_layer_vl.getFeatures()}
+        overlay_layer_skip = []
         
         feedback.setProgressText('Start processing...')
         for current, source_feat in enumerate(source_layer_vl.getFeatures()):
             if feedback.isCanceled():
                 break
             source_feat_geom = source_feat.geometry()
-            #methods: ['within','intersects','overlaps','contains','equals','crosses','touches','disjoint']
-            if 7 in method:
-                overlay_feature_ids = all_overlay_feature_ids
-            else:
-                overlay_feature_ids = overlay_layer_idx.intersects(source_feat_geom.boundingBox())
-            if sourceoverlayequal is True:
-                overlay_feature_ids.remove(source_feat.id())
+            source_feat_geometryengine = QgsGeometry.createGeometryEngine(source_feat_geom.constGet())
+            source_feat_geometryengine.prepareGeometry()
+            
+            overlay_features = overlay_layer_idx.intersects(source_feat_geom.boundingBox())
             matching_counter = 0
             
             if op is not None:
@@ -162,69 +155,38 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
                 source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result = source_compare_expression.evaluate(source_compare_expression_context)
             
-            for overlay_feat_id in overlay_feature_ids:
+            for overlay_feat in overlay_features:
                 if feedback.isCanceled():
                     break
                 
-                overlay_feat_geom = overlay_layer_idx.geometry(overlay_feat_id)
+                if overlay_feat.id in overlay_layer_skip:
+                    continue
                 
-                geometrictest = []
-                if 0 in method:
-                    if overlay_feat_geom.within(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
-                if 1 in method:
-                    if overlay_feat_geom.intersects(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
-                if 2 in method:
-                    if overlay_feat_geom.overlaps(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
-                if 3 in method:
-                    if overlay_feat_geom.contains(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
-                if 4 in method:
-                    if overlay_feat_geom.equals(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
-                if 5 in method:
-                    if overlay_feat_geom.crosses(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
-                if 6 in method:
-                    if overlay_feat_geom.touches(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
-                if 7 in method:
-                    if overlay_feat_geom.disjoint(source_feat_geom):
-                        geometrictest.append(True)
-                    else:
-                        geometrictest.append(False)
+                overlay_feat_geom = QgsGeometry.fromPointXY(overlay_feat.point()).constGet()
+                
+                geometrictest = False
+                if method == 0:
+                    if source_feat_geometryengine.contains(overlay_feat_geom):
+                        geometrictest = True
+                if method == 1:
+                    if source_feat_geometryengine.intersects(overlay_feat_geom):
+                        geometrictest = True
                         
-                if not False in geometrictest:
+                if geometrictest:
                     if op is None:
                         matching_counter += 1
                         if count_multiple is False:
-                            overlay_layer_idx.deleteFeature(overlay_layer_vl.getFeature(overlay_feat_id))
+                            overlay_layer_skip.append(overlay_feat.id)
                     else:
-                        overlay_feat = overlay_layer_vl.getFeature(overlay_feat_id)
+                        overlay_real_feat = overlay_layer_dict[overlay_feat.id]
                         overlay_compare_expression_context = QgsExpressionContext()
-                        overlay_compare_expression_context.setFeature(overlay_feat)
+                        overlay_compare_expression_context.setFeature(overlay_real_feat)
                         overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
                         overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
                         if op(source_compare_expression_result, overlay_compare_expression_result):
                             matching_counter += 1
                             if count_multiple is False:
-                                overlay_layer_idx.deleteFeature(overlay_feat)
+                                overlay_layer_skip.append(overlay_feat.id)
                         
             new_feat = QgsFeature(output_layer_fields)
             new_feat.setGeometry(source_feat_geom)
@@ -245,13 +207,13 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return CountFeaturesInFeaturesWithCondition()
+        return CountPointsInPolygonsWithCondition()
 
     def name(self):
-        return 'CountFeaturesInFeaturesWithCondition'
+        return 'CountPointsInPolygonsWithCondition'
 
     def displayName(self):
-        return self.tr('Count Features in Features with Condition')
+        return self.tr('Count Points In Polygons With Condition')
 
     def group(self):
         return self.tr(self.groupId())
@@ -260,4 +222,6 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
         return 'Vector - Conditional'
 
     def shortHelpString(self):
-        return self.tr('This Algorithm counts features in features with a given condition. To count singlepoints in polygons use "Count Points in Polygons with Condition" algorithm - it is a lot faster for this case')
+        return self.tr('This Algorithm counts points in polygons with a given condition. '
+                       'This algorithm will only work with Single-Points, Multi-Points are not allowed; '
+                       'it is much faster than "Count Features in Features with Condition" if you want to count points in polygons')
