@@ -43,6 +43,7 @@ from .algorithms.vector_conditionals.CountPointsInPolygonsWithCondition import *
 # Vector - Creation
 from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
 from .algorithms.vector_creation.GeometryLayerFromGeojsonStringField import *
+from .algorithms.vector_creation.CreateNestedGrid import *
 # OpenTripPlanner
 from .algorithms.opentripplanner.OtpRoutes import *
 from .algorithms.opentripplanner.OtpTraveltime import *
@@ -77,6 +78,7 @@ class ProcessXProvider(QgsProcessingProvider):
         # Vector - Creation
         self.addAlgorithm(CreateTimepolygonsWithPointcount())
         self.addAlgorithm(GeometryLayerFromGeojsonStringField())
+        self.addAlgorithm(CreateNestedGrid())
         # OpenTripPlanner
         self.addAlgorithm(OtpRoutes())
         self.addAlgorithm(OtpTraveltime())
