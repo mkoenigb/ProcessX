@@ -17,7 +17,7 @@ License: GNU General Public License v3.0
 import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsSpatialIndexKDBush, QgsGeometry, QgsWkbTypes,
-                       QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
+                       QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
 class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
@@ -25,11 +25,17 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
     SOURCE_FILTER_EXPRESSION = 'SOURCE_FILTER_EXPRESSION'
     SOURCE_COMPARE_EXPRESSION = 'SOURCE_COMPARE_EXPRESSION'
+    SOURCE_FILTER_EXPRESSION2 = 'SOURCE_FILTER_EXPRESSION2'
+    SOURCE_COMPARE_EXPRESSION2 = 'SOURCE_COMPARE_EXPRESSION2'
     OVERLAY_LYR = 'OVERLAY_LYR'
     OVERLAY_FILTER_EXPRESSION = 'OVERLAY_FILTER_EXPRESSION'
     OVERLAY_COMPARE_EXPRESSION = 'OVERLAY_COMPARE_EXPRESSION'
+    OVERLAY_FILTER_EXPRESSION2 = 'OVERLAY_FILTER_EXPRESSION2'
+    OVERLAY_COMPARE_EXPRESSION2 = 'OVERLAY_COMPARE_EXPRESSION2'
     COUNT_FIELDNAME = 'COUNT_FIELDNAME'
     OPERATION = 'OPERATION'
+    OPERATION2 = 'OPERATION2'
+    CONCAT_OPERATION = 'CONCAT_OPERATION'
     COUNT_MULTIPLE = 'COUNT_MULTIPLE'
     OUTPUT = 'OUTPUT'
 
@@ -60,10 +66,22 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
                 self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','not','is not','contains (overlay in source)'], defaultValue = 0, allowMultiple = False))
+                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (overlay in source)'], defaultValue = 0, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.OVERLAY_COMPARE_EXPRESSION, self.tr('Compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.CONCAT_OPERATION, self.tr('And / Or a second condition [optional]'), [None,'AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False))
+        self.addParameter(
+            QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.OPERATION2, self.tr('Second comparison operator (If you only want to use one condition, leave this empty and use the first comparison option above) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (overlay in source)'], defaultValue = 0, allowMultiple = False))
+        self.addParameter(
+            QgsProcessingParameterExpression(
+                self.OVERLAY_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Count')))
@@ -74,11 +92,17 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
         source_layer_vl = self.parameterAsLayer(parameters, self.SOURCE_LYR, context)
         source_compare_expression = self.parameterAsExpression(parameters, self.SOURCE_COMPARE_EXPRESSION, context)
         source_compare_expression = QgsExpression(source_compare_expression)
+        source_compare_expression2 = self.parameterAsExpression(parameters, self.SOURCE_COMPARE_EXPRESSION2, context)
+        source_compare_expression2 = QgsExpression(source_compare_expression2)
         overlay_layer_vl = self.parameterAsLayer(parameters, self.OVERLAY_LYR, context)
         overlay_compare_expression = self.parameterAsExpression(parameters, self.OVERLAY_COMPARE_EXPRESSION, context)
         overlay_compare_expression = QgsExpression(overlay_compare_expression)
+        overlay_compare_expression2 = self.parameterAsExpression(parameters, self.OVERLAY_COMPARE_EXPRESSION2, context)
+        overlay_compare_expression2 = QgsExpression(overlay_compare_expression2)
         operation = self.parameterAsInt(parameters, self.OPERATION, context)
-        ops = { # get the operator by this index
+        operation2 = self.parameterAsInt(parameters, self.OPERATION2, context)
+        concat_operation = self.parameterAsInt(parameters, self.CONCAT_OPERATION, context)
+        ops = {
             0: None,
             1: operator.ne,
             2: operator.eq,
@@ -87,11 +111,25 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             5: operator.le,
             6: operator.ge,
             7: operator.is_,
-            8: operator.not_,
-            9: operator.is_not,
-            10: operator.contains
+            8: operator.is_not,
+            9: operator.contains
             }
         op = ops[operation]
+        op2 = ops[operation2]
+        if op2 is None:
+            op2 = operator.eq # None is equal to ==: easier to implement, the seond condtion then is just '' == '' (respectively None == None), so always true.
+        cops = {
+            0: operator.and_, # None is equal to and: easier to implement, the seond condtion then is just ... AND '' == '' (respectively None == None), so always true, and only the first condition matters.
+            1: operator.and_,
+            2: operator.or_,
+            3: operator.xor,
+            4: operator.iand,
+            5: operator.ior,
+            6: operator.ixor,
+            7: operator.is_,
+            8: operator.is_not
+            }
+        concat_op = cops[concat_operation]
         source_filter_expression = self.parameterAsExpression(parameters, self.SOURCE_FILTER_EXPRESSION, context)
         source_filter_expression = QgsExpression(source_filter_expression)
         overlay_filter_expression = self.parameterAsExpression(parameters, self.OVERLAY_FILTER_EXPRESSION, context)
@@ -134,8 +172,22 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
         if overlay_layer_idx.size() == 0:
             feedback.pushWarning('Spatial Index is empty! Check if your input point layer is of type Single-Point 2D. This algorithm does not support 2.5D, 3D or MultiPoints!')
             
-        if op is not None: # dictonaries are more than two times faster than featurerequests
-            overlay_layer_dict = {feat.id():feat for feat in overlay_layer_vl.getFeatures()}
+        if op is not None: # dictonaries are a lot faster than featurerequests; https://gis.stackexchange.com/q/434768/107424
+            #overlay_layer_dict = {feat.id():feat for feat in overlay_layer_vl.getFeatures()}
+            overlay_layer_dict = {}
+            overlay_layer_dict2 = {}
+            #request_nogeom = QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry) # Can speed up the request, but makes expressions involving geometry (e.g. $area or others) impossible
+            for overlay_feat in overlay_layer_vl.getFeatures():
+                overlay_compare_expression_context = QgsExpressionContext()
+                overlay_compare_expression_context.setFeature(overlay_feat)
+                overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
+                overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
+                overlay_layer_dict[overlay_feat.id()] = overlay_compare_expression_result 
+                overlay_compare_expression_context2 = QgsExpressionContext()
+                overlay_compare_expression_context2.setFeature(overlay_feat)
+                overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
+                overlay_compare_expression_result2 = overlay_compare_expression2.evaluate(overlay_compare_expression_context2)
+                overlay_layer_dict2[overlay_feat.id()] = overlay_compare_expression_result2
         overlay_layer_skip = []
         
         feedback.setProgressText('Start processing...')
@@ -154,6 +206,10 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
                 source_compare_expression_context.setFeature(source_feat)
                 source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result = source_compare_expression.evaluate(source_compare_expression_context)
+                source_compare_expression_context2 = QgsExpressionContext()
+                source_compare_expression_context2.setFeature(source_feat)
+                source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+                source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
             
             for overlay_feat in overlay_features:
                 if feedback.isCanceled():
@@ -179,11 +235,14 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
                             overlay_layer_skip.append(overlay_feat.id)
                     else:
                         overlay_real_feat = overlay_layer_dict[overlay_feat.id]
-                        overlay_compare_expression_context = QgsExpressionContext()
-                        overlay_compare_expression_context.setFeature(overlay_real_feat)
-                        overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
-                        overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
-                        if op(source_compare_expression_result, overlay_compare_expression_result):
+                        #overlay_real_feat = overlay_layer_vl.getFeature(overlay_feat.id)
+                        overlay_compare_expression_result = overlay_layer_dict[overlay_feat.id]
+                        overlay_compare_expression_result2 = overlay_layer_dict2[overlay_feat.id]
+                        #overlay_compare_expression_context = QgsExpressionContext()
+                        #overlay_compare_expression_context.setFeature(overlay_real_feat)
+                        #overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
+                        #overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
+                        if concat_op(op(source_compare_expression_result, overlay_compare_expression_result),op2(source_compare_expression_result2, overlay_compare_expression_result2)):
                             matching_counter += 1
                             if count_multiple is False:
                                 overlay_layer_skip.append(overlay_feat.id)
@@ -199,7 +258,6 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             
             feedback.setProgress(int(current * total))
             
-
         return {self.OUTPUT: dest_id}
 
 
