@@ -15,7 +15,7 @@ The algorithms are:
 ### Vector - Creation
 - (New in v1.0) **Create Timepolygons With Pointcount**: Creates x duplicates of given polygons in a given timerange with from- and to-timestamp and the pointcount falling inbetween this timerange and geometry
 - (New in v1.0) **Geometry Layer From Geojson String Field**: Creates a duplicated layer of the input with modified geometry, taken from a field with a valid GeoJSON-String
-- (New in v1.1) **Create Nested Grid**: Creates x nested grids, where each childgrid has half the gridsize of its parent 
+- (New in v1.1) **Create Nested Grid**: Creates x nested grids, where each childgrid has fourth the gridsize of its parent 
 
 ### OpenTripPlanner
 - (New in v1.0) **OtpRoutes**: Requests routes from an OpenTripPlanner instance and creates a linelayer from the returned geometry and attributes

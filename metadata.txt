@@ -6,7 +6,7 @@
 name=ProcessX
 qgisMinimumVersion=3.16
 description=This Plug-In adds a new processing provider to QGIS. It contains a variety of processing algorithms.
-version=1.0
+version=1.1
 author=Mario Koenigbauer
 email=mkoenigb@gmx.de
 
@@ -21,7 +21,17 @@ repository=https://github.com/mkoenigb/ProcessX
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=-
-    1.0 Initial Release. Added algorithms: 
+    1.1 Improvements:
+	- Added second condition to conditional algorithms, allowing e.g. BETWEEN operations.
+	- Added order by clause to some algorithms
+	- Improved efficiency of some algorithms
+	- Removed NOT operator from conditional algorithms as it cannot be used for comparisions; Use IS NOT instead
+	- Some minor and general improvements
+	Added algorithms:
+	- Create Nested Grid
+	- Count Points in Polygons with Condition
+    1.0 Initial Release. 
+	Added algorithms: 
 	- OpenTripPlanner Routes
 	- OpenTripPlanner Traveltime
 	- Conditional Intersection
