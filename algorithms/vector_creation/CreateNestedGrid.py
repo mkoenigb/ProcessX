@@ -16,7 +16,7 @@ License: GNU General Public License v3.0
 
 import operator, processing, math
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometryEngine, QgsGeometry, QgsPointXY, QgsPoint, QgsWkbTypes, 
+from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometryEngine, QgsGeometry, QgsPointXY, QgsPoint, QgsRectangle, QgsWkbTypes, 
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterExtent, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
 
@@ -73,7 +73,7 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                 self.YSPACING, self.tr('Y-Spacing of Parent-Grid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.SUBGRIDS, self.tr('Number of Subgrids incl. Parentgrid (1 means only Parent-Grid)'), minValue = 1, maxValue = 9999, defaultValue = 3, type = 0))
+                self.SUBGRIDS, self.tr('Number of Subgrids incl. Parentgrid (1 means only Parent-Grid)'), minValue = 1, maxValue = 999, defaultValue = 3, type = 0))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Grid')))
@@ -127,9 +127,24 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
         
         n_parentgrids_x = int(math.ceil(extent_rect.width() / xspacing))
         n_parentgrids_y = int(math.ceil(extent_rect.height() / yspacing))
-        n_parentgrids_t = n_parentgrids_x * n_parentgrids_y
+        n_parentgrids_t = (n_parentgrids_x * n_parentgrids_y)
+        n_totalcells = 0
+        cells_per_subgrid = {}
+        for i in range(1,subgrids+1):
+            childgrids_per_parentgrid = ((2**(i-1))**2)
+            n_totalcells += childgrids_per_parentgrid * n_parentgrids_t
+            cells_per_subgrid[i] = childgrids_per_parentgrid * n_parentgrids_t
+        # actually use extent from parent grid:
+        extent_rect_new = QgsRectangle(extent_rect.xMinimum(), extent_rect.yMaximum() - ((n_parentgrids_y) * yspacing), extent_rect.xMinimum() + ((n_parentgrids_x) * xspacing), extent_rect.yMaximum())
         
-        total = 100.0 / (n_parentgrids_t * subgrids) if n_parentgrids_t > 0 else 0
+        if n_totalcells > 1000000:
+            feedback.pushWarning('Settings will create ' + str(n_parentgrids_t) + ' parent-gridcells and ' + str(n_totalcells-n_parentgrids_t) + ' child-gridcells for ' + str(subgrids-1) + ' childgrids. (= ' + str(n_totalcells) + ' gridcells in total)')
+            feedback.pushWarning('This may take a while!')
+            feedback.pushWarning('Consider choosing a smaller extent, fewer subgrids or a greater spacing')
+        else:
+            feedback.setProgressText('Settings will create ' + str(n_parentgrids_t) + ' parent-gridcells and ' + str(n_totalcells-n_parentgrids_t) + ' child-gridcells for ' + str(subgrids-1) + ' childgrids. (= ' + str(n_totalcells) + ' gridcells in total)')
+                
+        total = 100.0 / n_totalcells if n_totalcells > 0 else 0
         current = 0
         
         feedback.setProgressText('Start processing...')
@@ -142,7 +157,10 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
             for subgrid in range(subgrids, 0, -1):
                 if feedback.isCanceled():
                     break
-                feedback.setProgressText('Creating Subgrid #' + str(subgrid) + '...')
+                if subgrid == 1:
+                    feedback.setProgressText('Creating ' + str(cells_per_subgrid[subgrid]) + ' cells for Parentgrid #' + str(subgrid) + '...')
+                else:
+                    feedback.setProgressText('Creating ' + str(cells_per_subgrid[subgrid]) + ' cells for Subgrid #' + str(subgrid) + '...')
                 p_x_id = 1
                 p_y_id = 1
                 c_x_id = 1
@@ -153,7 +171,7 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                 point_topleft_pxy = start_pointxy
                 point_topleft_geom = QgsGeometry.fromPointXY(point_topleft_pxy)
                 
-                while ((point_topleft_pxy.x() <= extent_rect.xMaximum()) and (point_topleft_pxy.y() >= extent_rect.yMinimum())):
+                while ((point_topleft_pxy.x() <= extent_rect_new.xMaximum()) and (point_topleft_pxy.y() > extent_rect_new.yMinimum())):
                     if feedback.isCanceled():
                         break
                     
@@ -200,18 +218,20 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                     sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
                     fid += 1
                     
+                    current += 1
+                    feedback.setProgress(int(current * total))
+                    
                     #next x:
                     point_topleft_pxy = QgsPointXY(point_topleft_pxy.x()+step_x,point_topleft_pxy.y())
                     point_topleft_geom = QgsGeometry.fromPointXY(point_topleft_pxy)
                     if 2**(subgrid-1) == parentcellindicator_x:
                         p_x_id += 1
                         parentcellindicator_x = 0
-                        current += 1
                     parentcellindicator_x += 1
                     c_x_id += 1
                     
                     #next y (reset x):
-                    if point_topleft_pxy.x() > extent_rect.xMaximum() and point_topleft_pxy.y() > extent_rect.yMinimum():
+                    if point_topleft_pxy.x() >= extent_rect_new.xMaximum() and point_topleft_pxy.y() >= extent_rect_new.yMinimum():
                         point_topleft_pxy = QgsPointXY(start_pointxy.x(),point_topleft_pxy.y() - step_y)
                         point_topleft_geom = QgsGeometry.fromPointXY(point_topleft_pxy)
                         parentcellindicator_x = 1
@@ -220,11 +240,8 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                         if 2**(subgrid-1) == parentcellindicator_y:
                             p_y_id += 1
                             parentcellindicator_y = 0
-                            current += 1
                         parentcellindicator_y += 1
                         c_y_id += 1
-                        
-                    feedback.setProgress(int(current * total))
                         
                 #next subgrid:
                 step_x = step_x * 2
@@ -264,7 +281,6 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                        '\nNote that the parentgrid is created at last, so it lies on top of its childgrids. Change your symbology to make the childgrids visible.'
                        '\n You can also choose giving one or both axis letters as ids instead of numbers. These letters follow the Excel-Style-Column-Naming.'
                        '\n Each childgrid also has the id of its parent it lies within assigned.'
-                       '\n Note that the progress indicator is not 100% accurate.'
                        '\n Meaning of the attributes:'
                        '\n - fid: unique feature id'
                        '\n - uid: unique id of a cell: s_id + _ + p_x_id + _ + c_x_id + _ + p_y_id + _ + c_y_id'
