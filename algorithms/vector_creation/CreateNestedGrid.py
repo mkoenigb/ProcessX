@@ -80,13 +80,13 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                 self.XSPACING, self.tr('X-Spacing of Parent-Grid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.XFACTOR, self.tr('X-Factor to divide X-Spacing by for each childgrid'), minValue = 2, maxValue = 9999, defaultValue = 3, type = 0))
+                self.XFACTOR, self.tr('X-Factor to divide X-Spacing by for each childgrid'), minValue = 2, maxValue = 9999, defaultValue = 2, type = 0))
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.YSPACING, self.tr('Y-Spacing of Parent-Grid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.YFACTOR, self.tr('Y-Factor to divide Y-Spacing by for each childgrid'), minValue = 2, maxValue = 9999, defaultValue = 4, type = 0))
+                self.YFACTOR, self.tr('Y-Factor to divide Y-Spacing by for each childgrid'), minValue = 2, maxValue = 9999, defaultValue = 2, type = 0))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Grid')))
