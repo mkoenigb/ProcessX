@@ -6,7 +6,7 @@
 name=ProcessX
 qgisMinimumVersion=3.16
 description=This Plug-In adds a new processing provider to QGIS. It contains a variety of processing algorithms.
-version=1.1.1
+version=1.1.2
 author=Mario Koenigbauer
 email=mkoenigb@gmx.de
 
@@ -21,12 +21,15 @@ repository=https://github.com/mkoenigb/ProcessX
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    v1.1.2
+	Improvements:
+	- Completely reworked Create Nested Grid algorithm (fixed bugs, added new features: choose x and y factor for subgrids yourself, choose which grid lies on top)
     v1.1.1 
 	Improvements:
 	- Fixed progress indicator for Create Nested Grid algorithm
     v1.1 
 	Improvements:
-	- Added second condition to conditional algorithms, allowing e.g. BETWEEN operations.
+	- Added second condition to conditional algorithms, allowing e.g. BETWEEN operations
 	- Added order by clause to some algorithms
 	- Improved efficiency of some algorithms
 	- Removed NOT operator from conditional algorithms as it cannot be used for comparisions; Use IS NOT instead
