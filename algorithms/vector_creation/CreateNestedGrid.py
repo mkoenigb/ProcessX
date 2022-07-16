@@ -65,28 +65,28 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                 self.GRIDTYPE, self.tr('Gridtype'), ['Rectangle'], defaultValue = 0, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.LETTERS, self.tr('Use Latin Grid-Letters instead of Grid-Numbers on Axis'), ['X','Y'], defaultValue = None, allowMultiple = True, optional = True))
+                self.LETTERS, self.tr('Use Latin Grid-Letters instead of Grid-Numbers on Axis'), ['X','Y'], defaultValue = 0, allowMultiple = True, optional = True))
         self.addParameter(
             QgsProcessingParameterExtent(
                 self.EXTENT, self.tr('Extent')))
         self.addParameter(
             QgsProcessingParameterBoolean(
-                self.STARTWITHPARENT, self.tr('Start with parentgrid, so larger grids lie behind their childs (if unchecked, the largest grid lies on top and childs are not initially visible)'), defaultValue = 0))
+                self.STARTWITHPARENT, self.tr('Start with Parentgrid, so larger grids lie behind their childs (if unchecked, the largest grid lies on top and childs are not initially visible)'), defaultValue = 0))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.SUBGRIDS, self.tr('Number of Subgrids incl. Parentgrid (1 means only Parent-Grid)'), minValue = 1, maxValue = 999, defaultValue = 3, type = 0))
+                self.SUBGRIDS, self.tr('Number of Subgrids incl. Parentgrid (1 means only Parentgrid)'), minValue = 1, maxValue = 999, defaultValue = 3, type = 0))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.XSPACING, self.tr('X-Spacing of Parent-Grid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
+                self.XSPACING, self.tr('X-Spacing of Parentgrid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.XFACTOR, self.tr('X-Factor to divide X-Spacing by for each childgrid'), minValue = 2, maxValue = 9999, defaultValue = 2, type = 0))
+                self.XFACTOR, self.tr('X-Factor: Number of childcells per parentcell in X direction'), minValue = 1, maxValue = 9999, defaultValue = 2, type = 0))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.YSPACING, self.tr('Y-Spacing of Parent-Grid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
+                self.YSPACING, self.tr('Y-Spacing of Parentgrid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.YFACTOR, self.tr('Y-Factor to divide Y-Spacing by for each childgrid'), minValue = 2, maxValue = 9999, defaultValue = 2, type = 0))
+                self.YFACTOR, self.tr('Y-Factor: Number of childcells per parentcell in Y direction'), minValue = 1, maxValue = 9999, defaultValue = 2, type = 0))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Grid')))
@@ -169,11 +169,11 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                 xcells_per_subgrid[i] = int(xfactor**(i-1) * n_parentgrids_x)
                 ycells_per_subgrid[i] = int(yfactor**(i-1) * n_parentgrids_y)
             if n_totalcells > 1000000:
-                feedback.pushWarning('Settings will create ' + str(n_parentgrids_t) + ' parent-gridcells and ' + str(n_totalcells-n_parentgrids_t) + ' child-gridcells for ' + str(subgrids-1) + ' childgrids. (= ' + str(n_totalcells) + ' gridcells in total)')
+                feedback.pushWarning('Settings will create ' + str(n_parentgrids_t) + ' parent-gridcells and ' + str(n_totalcells-n_parentgrids_t) + ' child-gridcells for ' + str(subgrids-1) + ' childgrids (= ' + str(n_totalcells) + ' gridcells in total)')
                 feedback.pushWarning('This may take a while!')
                 feedback.pushWarning('Consider choosing a smaller extent, fewer subgrids, a greater spacing or a lower x/y factor')
             else:
-                feedback.setProgressText('Settings will create ' + str(n_parentgrids_t) + ' parent-gridcells and ' + str(n_totalcells-n_parentgrids_t) + ' child-gridcells for ' + str(subgrids-1) + ' childgrids. (= ' + str(n_totalcells) + ' gridcells in total)')
+                feedback.setProgressText('Settings will create ' + str(n_parentgrids_t) + ' parent-gridcells and ' + str(n_totalcells-n_parentgrids_t) + ' child-gridcells for ' + str(subgrids-1) + ' childgrids (= ' + str(n_totalcells) + ' gridcells in total)')
                 
             total = 100.0 / n_totalcells if n_totalcells > 0 else 0
             current = 0
