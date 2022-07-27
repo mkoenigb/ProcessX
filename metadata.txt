@@ -6,7 +6,7 @@
 name=ProcessX
 qgisMinimumVersion=3.16
 description=This Plug-In adds a new processing provider to QGIS. It contains a variety of processing algorithms.
-version=1.1.2
+version=1.2
 author=Mario Koenigbauer
 email=mkoenigb@gmx.de
 
@@ -21,6 +21,9 @@ repository=https://github.com/mkoenigb/ProcessX
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    v1.2
+	Added algorithms:
+	- Snap Line-Vertices to nearest Points by Condition
     v1.1.2
 	Improvements:
 	- Completely reworked Create Nested Grid algorithm (fixed bugs, added new features: choose x and y factor for subgrids yourself, choose which grid lies on top)
