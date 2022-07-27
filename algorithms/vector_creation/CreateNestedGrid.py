@@ -303,8 +303,7 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
         return 'Vector - Creation'
 
     def shortHelpString(self):
-        return self.tr('This Algorithm creates a nested grid, where the gridsize is specified for the parentgrid. Each childgrid has half the x- and y-spacing of its parent.'
-                       '\nNote that the parentgrid is created at last, so it lies on top of its childgrids. Change your symbology to make the childgrids visible.'
+        return self.tr('This Algorithm creates a nested grid, where the gridsize is specified for the parentgrid. You may also choose how many cells a child shall have in x- and y-direction.'
                        '\n You can also choose giving one or both axis letters as ids instead of numbers. These letters follow the Excel-Style-Column-Naming.'
                        '\n Each childgrid also has the id of its parent it lies within assigned.'
                        '\n Meaning of the attributes:'
