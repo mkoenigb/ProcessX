@@ -24,6 +24,7 @@ changelog=
     v1.2
 	Added algorithms:
 	- Snap Vertices to nearest Points by Condition
+	- Nearest Points to Path
     v1.1.2
 	Improvements:
 	- Completely reworked Create Nested Grid algorithm (fixed bugs, added new features: choose x and y factor for subgrids yourself, choose which grid lies on top)
@@ -31,15 +32,15 @@ changelog=
 	Improvements:
 	- Fixed progress indicator for Create Nested Grid algorithm
     v1.1 
+	Added algorithms:
+	- Create Nested Grid
+	- Count Points in Polygons with Condition
 	Improvements:
 	- Added second condition to conditional algorithms, allowing e.g. BETWEEN operations
 	- Added order by clause to some algorithms
 	- Improved efficiency of some algorithms
 	- Removed NOT operator from conditional algorithms as it cannot be used for comparisions; Use IS NOT instead
 	- Some minor and general improvements
-	Added algorithms:
-	- Create Nested Grid
-	- Count Points in Polygons with Condition
     v1.0 Initial Release. 
 	Added algorithms: 
 	- OpenTripPlanner Routes

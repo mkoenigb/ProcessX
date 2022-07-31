@@ -45,6 +45,7 @@ from .algorithms.vector_conditionals.SnapVerticesToNearestPointsByCondition impo
 from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
 from .algorithms.vector_creation.GeometryLayerFromGeojsonStringField import *
 from .algorithms.vector_creation.CreateNestedGrid import *
+from .algorithms.vector_creation.NearestPointsToPath import *
 # OpenTripPlanner
 from .algorithms.opentripplanner.OtpRoutes import *
 from .algorithms.opentripplanner.OtpTraveltime import *
@@ -81,6 +82,7 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(CreateTimepolygonsWithPointcount())
         self.addAlgorithm(GeometryLayerFromGeojsonStringField())
         self.addAlgorithm(CreateNestedGrid())
+        self.addAlgorithm(NearestPointsToPath())
         # OpenTripPlanner
         self.addAlgorithm(OtpRoutes())
         self.addAlgorithm(OtpTraveltime())
