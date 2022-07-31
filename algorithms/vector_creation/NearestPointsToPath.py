@@ -31,14 +31,14 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
     HANDLE_INVALID = 'HANDLE_INVALID'
     ADD_PATH_FIDS = 'ADD_PATH_FIDS'
     ADD_PATH_DISTS = 'ADD_PATH_DISTS'
-    #ALLOW_SELF_CROSSING = 'ALLOW_SELF_CROSSING'
+    ALLOW_SELF_CROSSING = 'ALLOW_SELF_CROSSING'
     OUTPUT = 'OUTPUT'
     
 
     def initAlgorithm(self, config=None):
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.SOURCE_LYR, self.tr('Source Layer (Z- and M-Values are not supported)'), [QgsProcessing.TypeVectorPoint]))
+                self.SOURCE_LYR, self.tr('Source Point-Layer (Z- and M-Values as well as MultiPoints are not supported)'), [QgsProcessing.TypeVectorPoint]))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.SOURCE_LYR_ORDERBY, self.tr('OrderBy-Expression for Source-Layer \n(used to determine the points to start from, if unused the feature ids are taken)'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
@@ -62,13 +62,18 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                 self.HANDLE_INVALID, self.tr('How to handle result paths with identical start- and endpoint and no midpoints?'), ['Add them to result anyway','Skip these and do not add them to result'], defaultValue = 1, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterBoolean(
-                self.ADD_PATH_FIDS, self.tr('Add a semicolon-separated field with all feature ids the path passes \n(better do not use it, if you expect very large groups for a path because it can crash QGIS)'), defaultValue = False))
+                self.ADD_PATH_FIDS, self.tr('Add a semicolon-separated field with all feature ids the path passes '
+                                            '\n(better do not use it, if you expect very large groups for a path because it can crash QGIS)'), defaultValue = False))
         self.addParameter(
             QgsProcessingParameterBoolean(
-                self.ADD_PATH_DISTS, self.tr('Add a semicolon-separated field with all lengths the path has \n(better do not use it, if you expect very large groups for a path because it can crash QGIS; or if you want to speed up the algorithm a little)'), defaultValue = False))
-        #self.addParameter(
-        #    QgsProcessingParameterBoolean(
-        #        self.ALLOW_SELF_CROSSING, self.tr('Allow self-crossing of the result path? \n(Unchecking this option can exponentially slow down the algorithm!)'), defaultValue = True))
+                self.ADD_PATH_DISTS, self.tr('Add a semicolon-separated field with all lengths the path has '
+                                             '\n(better do not use it, if you expect very large groups for a path because it can crash QGIS; '
+                                             'or if you want to speed up the algorithm a little)'), defaultValue = False))
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.ALLOW_SELF_CROSSING, self.tr('Allow self-crossing of a result path? '
+                                                  '\nUnchecking this option can exponentially slow down the algorithm!'
+                                                  '\nIf not allowed, a new feature is created when there is no self-cross-avoiding-point available'), defaultValue = True))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Path')))
@@ -91,21 +96,21 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
         handle_invalid = self.parameterAsInt(parameters, self.HANDLE_INVALID, context)
         add_path_fids = self.parameterAsBool(parameters, self.ADD_PATH_FIDS, context)
         add_path_dists = self.parameterAsBool(parameters, self.ADD_PATH_DISTS, context)
-        #allow_self_crossing = self.parameterAsBool(parameters, self.ALLOW_SELF_CROSSING, context)
-        allow_self_crossing = True
+        allow_self_crossing = self.parameterAsBool(parameters, self.ALLOW_SELF_CROSSING, context)
+        #allow_self_crossing = True
         
         output_layer_fields = QgsFields()
-        output_layer_fields.append(QgsField('path_group', QVariant.String))
-        output_layer_fields.append(QgsField('begin_fid', QVariant.Int))
+        output_layer_fields.append(QgsField('path_group_id', QVariant.Int))
+        output_layer_fields.append(QgsField('path_group_name', QVariant.String))
+        output_layer_fields.append(QgsField('path_n_vertices', QVariant.Int))
+        output_layer_fields.append(QgsField('path_length', QVariant.Double))
+        output_layer_fields.append(QgsField('path_begin_fid', QVariant.Int))
+        output_layer_fields.append(QgsField('path_end_fid', QVariant.Int))
         if add_path_fids:
             output_layer_fields.append(QgsField('path_fids', QVariant.String))
-        output_layer_fields.append(QgsField('path_n_vertices', QVariant.Int))
         if add_path_dists:
             output_layer_fields.append(QgsField('path_dists', QVariant.String))
-        output_layer_fields.append(QgsField('path_length', QVariant.Double))
-        output_layer_fields.append(QgsField('end_fid', QVariant.Int))
-        
-        
+            
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
                                                output_layer_fields, 2, # LineString = 2
                                                source_layer.sourceCrs())
@@ -119,7 +124,7 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             groupby_expr = True
             n_neighbors = -1
         invalid_paths = 0
-        
+                
         source_layer_feature_count = source_layer.featureCount()
         total = 100.0 / source_layer_feature_count if source_layer_feature_count else 0
         if groupby_expr:
@@ -148,6 +153,7 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                 source_layer_dict[source_feat.id()] = source_groupby_expression_result 
                 feedback.setProgress(int(current * total))
         points_skip = []
+        path_group_id = 1
         
         source_orderby_request = QgsFeatureRequest()
         if source_orderby_expression not in (QgsExpression(''),QgsExpression(None)):
@@ -161,7 +167,7 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             if source_feat.id() in points_skip:
                 continue
             
-            new_geom = [source_feat.geometry().asPoint()]
+            new_geom = [source_feat.geometry().centroid().asPoint()]
             new_begin = source_feat.id()
             if add_path_fids:
                 new_path = [str(source_feat.id())]
@@ -172,7 +178,7 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                 group = source_layer_dict[source_feat.id()]
             else:
                 group = source_feat.id()
-            search_from_point_geom = source_feat.geometry()
+            search_from_point_geom = source_feat.geometry().centroid()
             search_from_point_id = source_feat.id()
             no_further_matches = False
             points_skip.append(source_feat.id())
@@ -186,7 +192,7 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                     break
                 nearest_neighbors = source_layer_idx.nearestNeighbor(search_from_point_geom.asPoint(), neighbors = -1, maxDistance = max_dist)
                 nearest_neighbors.remove(search_from_point_id)
-                for neighbor_id in nearest_neighbors:
+                for j, neighbor_id in enumerate(nearest_neighbors):
                     if feedback.isCanceled():
                         break
                     if neighbor_id in points_skip:
@@ -195,13 +201,11 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                         if not group == source_layer_dict[neighbor_id]:
                             continue
                     neighbor_geom = source_layer_idx.geometry(neighbor_id)
+                    neighbor_geom = neighbor_geom.centroid()
                     if not allow_self_crossing:
                         current_geom = QgsGeometry.fromPolylineXY(new_geom)
-                        future_geoml = new_geom
-                        future_geoml.append(neighbor_geom.asPoint())
-                        future_geom = QgsGeometry.fromPolylineXY(future_geoml)
-                        if future_geom.overlaps(current_geom):
-                            feedback.pushWarning('to ' + str(neighbor_id) + ' intersects')
+                        planned_geom = QgsGeometry.fromPolylineXY([new_geom[-1],neighbor_geom.asPoint()])
+                        if current_geom.crosses(planned_geom):
                             continue
                     if add_path_dists:
                         new_dists.append(str(round(neighbor_geom.distance(QgsGeometry.fromPointXY(new_geom[-1])),6)))
@@ -221,27 +225,28 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             if len(new_geom) < 2:
                 invalid_paths += 1
                 if handle_invalid == 0:
-                    new_geom.append(source_feat.geometry().asPoint()) # will likely create invalid geometry, but should the feature be skipped instead?
+                    new_geom.append(source_feat.geometry().centroid().asPoint()) # will likely create invalid geometry, but should the feature be skipped instead?
                 elif handle_invalid == 1:
                     continue
             new_feat = QgsFeature(output_layer_fields)
             new_feat.setGeometry(QgsGeometry.fromPolylineXY(new_geom))
-            new_feat['begin_fid'] = new_begin
+            new_feat['path_group_id'] = path_group_id
+            new_feat['path_group_name'] = str(group)
+            new_feat['path_n_vertices'] = len(new_geom)
+            new_feat['path_length'] = QgsGeometry.fromPolylineXY(new_geom).length()
+            new_feat['path_begin_fid'] = new_begin
+            new_feat['path_end_fid'] = new_end
             if add_path_fids:
                 new_feat['path_fids'] = ';'.join(new_path)
-            new_feat['path_n_vertices'] = len(new_geom)
             if add_path_dists:
                 new_feat['path_dists'] = ';'.join(new_dists)
-            new_feat['path_length'] = QgsGeometry.fromPolylineXY(new_geom).length()
-            new_feat['path_group'] = str(group)
-            new_feat['end_fid'] = new_end
-            
             sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
+            path_group_id += 1
             
         if handle_invalid == 0 and invalid_paths > 0:
-            feedback.pushWarning('Added ' + str(invalid_paths) + ' paths with less than 2 vertices to resultlayer')
+            feedback.pushWarning('Added ' + str(invalid_paths) + ' paths with 2 vertices (identical start- and endvertices) to resultlayer')
         elif handle_invalid == 1 and invalid_paths > 0:
-            feedback.pushWarning('Skipped ' + str(invalid_paths) + ' paths with less than 2 vertices')
+            feedback.pushWarning('Skipped ' + str(invalid_paths) + ' paths with 2 vertices (identical start- and endvertices) to resultlayer')
         return {self.OUTPUT: dest_id}
 
 
@@ -265,10 +270,15 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm connects points to a path based on their distance. A point is only used once.'
+        'This algorithm connects points to a path based on their distance to each other. A point is only used once.'
+        '\nThis algorithm does not support Z- and M-Values. It will simply ignore these. If the inputlayer is of type MultiPoint, it will take the centroids of these points.'
         '\nIt basically does the same as the native "Points to Path" algorithm, but instead of an order field it takes the distance between points as condition.'
         '\nYou can group the points/paths by an optional maximum distance and/or an expression and/or a maximum number of points per group.'
         '\nThe algorithm adds a field with the feature id of the startpoint and a field with the feature id of the endpoint to each path.'
-        ' Also fields with the number of vertices and the total length are added.'
+        ' Also, fields with the number of vertices and the total length are added.'
         ' Additionally you may choose whether array-like-string fields of the vertices feature ids and the distances between them shall be added.'
+        ' Be aware that these array-like fields may cause an overflow, if you expect large groups or the inputlayer is pretty big. USE THIS WITH CAUTION, since it can cause QGIS to crash, especiall when you open the attribute table of the resultlayer.'
+        '\nThe setting to avoid self-crossing of paths is extremely computationally expensive.'
+        ' It avoids self-crossing of a single feature/path in the result, but it does not prevent different result-features/paths from crossing each other.'
+        ' If the algorithm cannot find a nearby point where creating a path would cross the already existing path, it will close the current feature/path and start with the next one.'
         )
