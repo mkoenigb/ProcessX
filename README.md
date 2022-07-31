@@ -5,7 +5,7 @@ This Plug-In adds a new processing provider to QGIS. It contains a variety of pr
 
 The algorithms are:
 
-### Vector - Conditional:
+### Vector - Conditional
 - (New in v1.0) **Join Attributes By Nearest With Condition**: Joins the attributes of the x nearest features if an expression condition returns true.
 - (New in v1.0) **Count Features In Features With Condition**: Counts features in another layers features (can be lines and polygons as well as points and different geometric predicates like intersects, within, disjoint, equals...) if an expression condition returns true.
 - (New in v1.0) **Select Duplicates By Similarity**: Selects possible duplicates in a layer by distance and attribute like exact attribute match, soundex, hamming distance, levenshtein distance or longest common substring.
