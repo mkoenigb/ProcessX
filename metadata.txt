@@ -23,7 +23,7 @@ hasProcessingProvider=yes
 changelog=
     v1.2
 	Added algorithms:
-	- Snap Line-Vertices to nearest Points by Condition
+	- Snap Vertices to nearest Points by Condition
     v1.1.2
 	Improvements:
 	- Completely reworked Create Nested Grid algorithm (fixed bugs, added new features: choose x and y factor for subgrids yourself, choose which grid lies on top)

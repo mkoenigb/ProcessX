@@ -11,7 +11,7 @@ The algorithms are:
 - (New in v1.0) **Select Duplicates By Similarity**: Selects possible duplicates in a layer by distance and attribute like exact attribute match, soundex, hamming distance, levenshtein distance or longest common substring.
 - (New in v1.0) **Conditional Intersection**: Creates an intersection geometry between the features of two layers only if an expression condition returns true. This algorithm can also be used as polygon-self-intersection.
 - (New in v1.1) **Count Points in Polygons With Condition**: Counts points in polygons (intersects or within) if an expression condition returns true (This algorithm is a lot faster than "Count Features In Features With Condition" when counting 2D-Single-Points in Polygons).
-- (New in v1.2) **Snap Line Vertices to nearest Points by Condition**: Snaps the vertices of a given line layer (singleline or multiline) to the nearest point of a given point layer by optional attribute and distance conditions.
+- (New in v1.2) **Snap Vertices to nearest Points by Condition**: Snaps the vertices of a given layer (singleline, multiline, polygon or point) to the nearest point of a given point layer by optional attribute and distance conditions.
 
 ### Vector - Creation
 - (New in v1.0) **Create Timepolygons With Pointcount**: Creates x duplicates of given polygons in a given timerange with from- and to-timestamp and the pointcount falling inbetween this timerange and geometry.
