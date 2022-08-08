@@ -18,7 +18,7 @@ import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometryEngine, QgsGeometry,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterBoolean, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterBoolean, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
 
 class ConditionalIntersection(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
@@ -41,7 +41,7 @@ class ConditionalIntersection(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.SOURCE_LYR, self.tr('Source Layer')))
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -50,7 +50,7 @@ class ConditionalIntersection(QgsProcessingAlgorithm):
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.OVERLAY_LYR, self.tr('Overlay Layer')))
         self.addParameter(
             QgsProcessingParameterExpression(

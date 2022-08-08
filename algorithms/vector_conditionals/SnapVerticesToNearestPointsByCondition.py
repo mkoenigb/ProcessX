@@ -18,7 +18,7 @@ import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPointXY, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
 class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
@@ -41,7 +41,7 @@ class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
 
     def initAlgorithm(self, config=None):
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.SOURCE_LYR, self.tr('Source Layer (Containing the vertices that shall be snapped)')))
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -50,7 +50,7 @@ class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.POINTS_LYR, self.tr('Points Layer to snap line vertices to (MultiPoints will be casted to SinglePoints)'), [QgsProcessing.TypeVectorPoint]))
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -253,52 +253,34 @@ class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
                 source_compare_expression_context2.setFeature(line_feat)
                 source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
-            #feedback.setProgressText('Method: ' + str(snap_method))
-            #feedback.setProgressText('Line Geom: ' + str(line_geom))
-            #feedback.setProgressText('Line Geom N Vertices: ' + str(n_vertices_line_geom))
-            #feedback.setProgressText('Line Geom Parts: ' + str(line_geom.parts()))
             for line_part_id, line_part in enumerate(line_geom.parts()):
                 if feedback.isCanceled():
                     break
                 if snap_multiple == 3: # clear skip list for part
                     points_skip = []
                 n_vertices_line_part = len([v for i, v in enumerate(line_part.vertices())])
-                #feedback.setProgressText('Line Part ID: ' + str(line_part_id))
-                #feedback.setProgressText('Line Part: ' + str(line_part))
-                #feedback.setProgressText('Line Part N Vertices: ' + str(n_vertices_line_part))
-                #feedback.setProgressText('Line Part Vertices: ' + str(line_part.vertices()))
                 for line_part_vertex_id, line_vertex in enumerate(line_part.vertices()):
                     if feedback.isCanceled():
                         break
-                    #feedback.setProgressText('Line Vertex ID: ' + str(line_vertex_id))
-                    #feedback.setProgressText('Line Vertex: ' + str(line_geom.vertexAt(line_vertex_id)))
-                    #feedback.setProgressText('Line Part Vertex ID: ' + str(line_part_vertex_id))
-                    #feedback.setProgressText('Line Part Vertex: ' + str(line_geom.vertexAt(line_part_vertex_id)))
-                    #feedback.setProgressText('Line Vertex: ' + str(line_vertex))
                     vertex_is_midpoint = True # easier than rewriting all conditions...
                     doit = False # my lazy ass does not want to write that stuff 5 times...
                     if line_vertex_id == 0:
-                        #feedback.setProgressText('Vertex is Geom Start')
                         vertex_is_midpoint = False
                         if 0 in snap_method:
                             doit = True
                     if line_vertex_id == (n_vertices_line_geom - 1):
-                        #feedback.setProgressText('Vertex is Geom End')
                         vertex_is_midpoint = False
                         if 1 in snap_method:
                             doit = True
                     if line_part_vertex_id == 0:
-                        #feedback.setProgressText('Vertex is Part Start')
                         vertex_is_midpoint = False
                         if 2 in snap_method:
                             doit = True
                     if line_part_vertex_id == (n_vertices_line_part - 1):
-                        #feedback.setProgressText('Vertex is Part End')
                         vertex_is_midpoint = False
                         if 3 in snap_method:
                             doit = True
                     if vertex_is_midpoint is True:
-                        #feedback.setProgressText('Vertex is Midpoint')
                         if 4 in snap_method:
                             doit = True
                     

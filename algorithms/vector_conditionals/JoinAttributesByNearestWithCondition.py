@@ -18,7 +18,7 @@ import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterBoolean, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterBoolean, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
 
 class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
     METHOD = 'METHOD'
@@ -47,7 +47,7 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.METHOD, self.tr('Choose method for calculation'), ['Source layer geometry to join layer geometry','Source layer centroid to join layer centroid'], defaultValue = 0, allowMultiple = False))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.SOURCE_LYR, self.tr('Source Layer')))
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -56,7 +56,7 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.JOIN_LYR, self.tr('Join Layer')))
         self.addParameter(
             QgsProcessingParameterExpression(

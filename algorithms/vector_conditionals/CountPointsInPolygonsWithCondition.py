@@ -18,7 +18,7 @@ import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsSpatialIndexKDBush, QgsGeometry, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
 class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
     METHOD = 'METHOD'
@@ -43,7 +43,7 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.METHOD, self.tr('Choose geometric predicate'), ['within','intersects'], defaultValue = 1, allowMultiple = False))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.SOURCE_LYR, self.tr('Source Layer (Polygons to add count to)'), [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -52,7 +52,7 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.OVERLAY_LYR, self.tr('Overlay Layer (2D-Single-Points to count)'), [QgsProcessing.TypeVectorPoint]))
         self.addParameter(
             QgsProcessingParameterExpression(

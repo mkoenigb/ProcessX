@@ -18,7 +18,7 @@ import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsSpatialIndexKDBush, QgsGeometry, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
 class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
     METHOD = 'METHOD'
@@ -47,7 +47,7 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterEnum(
                 self.CONCAT_METHOD, self.tr('Choose how to handle several geometric predicates'), ['All geometric predicates must be true (AND)','At least one geometric predicate must be true (OR)'], defaultValue = 1, allowMultiple = False))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.SOURCE_LYR, self.tr('Source Layer (Features to add count to)')))
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -56,7 +56,7 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.OVERLAY_LYR, self.tr('Overlay Layer (Features to count)')))
         self.addParameter(
             QgsProcessingParameterExpression(
