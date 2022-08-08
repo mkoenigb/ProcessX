@@ -46,7 +46,7 @@ class GeometryLayerFromGeojsonStringField(QgsProcessingAlgorithm):
                 self.OUTPUT, self.tr('new_geojson_layer')))
 
     def processAlgorithm(self, parameters, context, feedback):
-        source_layer = self.parameterAsLayer(parameters, self.SOURCE_LYR, context)
+        source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context)
         source_geojsonfield = self.parameterAsString(parameters, self.GEOJSON_FIELD, context)
         wkbgeometrytype_fromenum = self.parameterAsInt(parameters, self.GEOMETRYTYPE_ENUM, context)
         wkbgeometrytype = wkbgeometrytype_fromenum

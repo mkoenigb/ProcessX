@@ -25,7 +25,7 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
     SOURCE_LYR_ORDERBY = 'SOURCE_LYR_ORDERBY'
     SOURCE_FILTER_EXPRESSION = 'SOURCE_FILTER_EXPRESSION'
     SOURCE_GROUPBY_EXPRESSION = 'SOURCE_GROUPBY_EXPRESSION'
-    #USE_MULTIPLE = 'USE_MULTIPLE' # Does not make any sense: never use it
+    SOURCE_CUSTOM_ID = 'SOURCE_CUSTOM_ID'
     MAX_DIST = 'MAX_DIST'
     MAX_POINTS = 'MAX_POINTS'
     HANDLE_INVALID = 'HANDLE_INVALID'
@@ -47,13 +47,13 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.SOURCE_GROUPBY_EXPRESSION, self.tr('GroupBy-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))        
+                self.SOURCE_GROUPBY_EXPRESSION, self.tr('GroupBy-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
+        self.addParameter(
+            QgsProcessingParameterExpression(
+                self.SOURCE_CUSTOM_ID, self.tr('Add a custom field or expression value to result layer (will show up as string value within cid fields in result)'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterDistance(
                 self.MAX_DIST, self.tr('Maximum distance between points of a group (0 means unlimited)'), parentParameterName = 'SOURCE_LYR', defaultValue = 0, minValue = 0, maxValue = 2147483647))
-        #self.addParameter(
-        #    QgsProcessingParameterBoolean(
-        #        self.USE_MULTIPLE, self.tr('Use points more than once to build the path')))
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.MAX_POINTS, self.tr('Maximum number of points in a group (0 means unlimited)'), defaultValue = 0, minValue = 0, maxValue = 2147483647))
@@ -88,7 +88,8 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
         source_filter_expression = QgsExpression(source_filter_expression)
         source_groupby_expression = self.parameterAsExpression(parameters, self.SOURCE_GROUPBY_EXPRESSION, context)
         source_groupby_expression = QgsExpression(source_groupby_expression)
-        #use_multiple = self.parameterAsBool(parameters, self.USE_MULTIPLE, context)
+        source_custom_id = self.parameterAsExpression(parameters, self.SOURCE_CUSTOM_ID, context)
+        source_custom_id = QgsExpression(source_custom_id)
         max_dist = self.parameterAsDouble(parameters, self.MAX_DIST, context)
         max_points = self.parameterAsInt(parameters, self.MAX_POINTS, context)
         if max_points == 0:
@@ -97,7 +98,6 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
         add_path_fids = self.parameterAsBool(parameters, self.ADD_PATH_FIDS, context)
         add_path_dists = self.parameterAsBool(parameters, self.ADD_PATH_DISTS, context)
         allow_self_crossing = self.parameterAsBool(parameters, self.ALLOW_SELF_CROSSING, context)
-        #allow_self_crossing = True
         
         output_layer_fields = QgsFields()
         output_layer_fields.append(QgsField('path_group_id', QVariant.Int))
@@ -105,9 +105,12 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
         output_layer_fields.append(QgsField('path_n_vertices', QVariant.Int))
         output_layer_fields.append(QgsField('path_length', QVariant.Double))
         output_layer_fields.append(QgsField('path_begin_fid', QVariant.Int))
+        output_layer_fields.append(QgsField('path_begin_cid', QVariant.String))
         output_layer_fields.append(QgsField('path_end_fid', QVariant.Int))
+        output_layer_fields.append(QgsField('path_end_cid', QVariant.String))
         if add_path_fids:
             output_layer_fields.append(QgsField('path_fids', QVariant.String))
+            output_layer_fields.append(QgsField('path_cids', QVariant.String))
         if add_path_dists:
             output_layer_fields.append(QgsField('path_dists', QVariant.String))
             
@@ -119,10 +122,11 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             source_layer = source_layer.materialize(QgsFeatureRequest(source_filter_expression))
             
         groupby_expr = False
-        n_neighbors = 2
         if source_groupby_expression not in (QgsExpression(''),QgsExpression(None)):
             groupby_expr = True
-            n_neighbors = -1
+        add_custom_ids = False
+        if source_custom_id not in (QgsExpression(''),QgsExpression(None)):
+            add_custom_ids = True
         invalid_paths = 0
                 
         source_layer_feature_count = source_layer.featureCount()
@@ -138,12 +142,11 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
         
         feedback.setProgressText('Building spatial index...')
         source_layer_idx = QgsSpatialIndex(source_layer.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
-        #if source_layer_idx.size() == 0:
-        #    feedback.pushWarning('Spatial Index is empty! Check if your input point layer is of type Single-Point 2D. This algorithm does not support 2.5D, 3D or MultiPoints!')
         
-        if groupby_expr:
+        if groupby_expr or add_custom_ids:
             feedback.setProgressText('Evaluating Group-By Expression...')
             source_layer_dict = {}
+            source_layer_custom_ids = {}
             for source_feat in source_layer.getFeatures():
                 current += 1
                 source_groupby_expression_context = QgsExpressionContext()
@@ -151,6 +154,11 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                 source_groupby_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_groupby_expression_result = source_groupby_expression.evaluate(source_groupby_expression_context)
                 source_layer_dict[source_feat.id()] = source_groupby_expression_result 
+                source_custom_id_context = QgsExpressionContext()
+                source_custom_id_context.setFeature(source_feat)
+                source_custom_id_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+                source_custom_id_result = source_custom_id.evaluate(source_custom_id_context)
+                source_layer_custom_ids[source_feat.id()] = str(source_custom_id_result)
                 feedback.setProgress(int(current * total))
         points_skip = []
         path_group_id = 1
@@ -169,11 +177,16 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             
             new_geom = [source_feat.geometry().centroid().asPoint()]
             new_begin = source_feat.id()
+            new_end = source_feat.id()
             if add_path_fids:
                 new_path = [str(source_feat.id())]
+                if add_custom_ids:
+                    new_path_cids = [source_layer_custom_ids[source_feat.id()]]
             if add_path_dists:
                 new_dists = []
-            new_end = source_feat.id()
+            if add_custom_ids:
+                new_begin_cid = source_layer_custom_ids[source_feat.id()]
+                new_end_cid = source_layer_custom_ids[source_feat.id()]
             if groupby_expr:
                 group = source_layer_dict[source_feat.id()]
             else:
@@ -211,7 +224,11 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
                         new_dists.append(str(round(neighbor_geom.distance(QgsGeometry.fromPointXY(new_geom[-1])),6)))
                     if add_path_fids:
                         new_path.append(str(neighbor_id))
+                        if add_custom_ids:
+                            new_path_cids.append(source_layer_custom_ids[neighbor_id])
                     new_end = neighbor_id
+                    if add_custom_ids:
+                        new_end_cid = source_layer_custom_ids[neighbor_id]
                     new_geom.append(neighbor_geom.asPoint())
                     search_from_point_geom = neighbor_geom
                     search_from_point_id = neighbor_id
@@ -236,8 +253,13 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             new_feat['path_length'] = QgsGeometry.fromPolylineXY(new_geom).length()
             new_feat['path_begin_fid'] = new_begin
             new_feat['path_end_fid'] = new_end
+            if add_custom_ids:
+                new_feat['path_begin_cid'] = new_begin_cid
+                new_feat['path_end_cid'] = new_end_cid
             if add_path_fids:
                 new_feat['path_fids'] = ';'.join(new_path)
+                if add_custom_ids:
+                    new_feat['path_cids'] = ';'.join(new_path_cids)
             if add_path_dists:
                 new_feat['path_dists'] = ';'.join(new_dists)
             sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
@@ -274,7 +296,8 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
         '\nThis algorithm does not support Z- and M-Values. It will simply ignore these. If the inputlayer is of type MultiPoint, it will take the centroids of these points.'
         '\nIt basically does the same as the native "Points to Path" algorithm, but instead of an order field it takes the distance between points as condition.'
         '\nYou can group the points/paths by an optional maximum distance and/or an expression and/or a maximum number of points per group.'
-        '\nThe algorithm adds a field with the feature id of the startpoint and a field with the feature id of the endpoint to each path.'
+        '\nThe algorithm adds a field with the feature id (fid) of the startpoint and a field with the feature id of the endpoint to each path.'
+        ' Additionally you can also enter an expression or field you want to add to the result. These will be called cid (custom id) and converted to datatype string.'
         ' Also, fields with the number of vertices and the total length are added.'
         ' Additionally you may choose whether array-like-string fields of the vertices feature ids and the distances between them shall be added.'
         ' Be aware that these array-like fields may cause an overflow, if you expect large groups or the inputlayer is pretty big. USE THIS WITH CAUTION, since it can cause QGIS to crash, especiall when you open the attribute table of the resultlayer.'

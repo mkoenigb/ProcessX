@@ -17,7 +17,7 @@ License: GNU General Public License v3.0
 from PyQt5.QtCore import QCoreApplication, QVariant, QDateTime
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsGeometry, QgsPoint, QgsFields, QgsWkbTypes, QgsDateTimeFieldFormatter, QgsApplication, QgsProcessingParameterBoolean,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsSpatialIndex, QgsProcessingParameterExpression, QgsExpressionContext, QgsExpressionContextUtils,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterDateTime, QgsProcessingParameterField, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterString, QgsProcessingParameterNumber)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterDateTime, QgsProcessingParameterField, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterString, QgsProcessingParameterNumber)
 import processing
 from datetime import *
 import math
@@ -36,10 +36,10 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
     def initAlgorithm(self, config=None):
         
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.POLYGON_LYR, self.tr('Polygon'), [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.POINT_LYR, self.tr('Point'), [QgsProcessing.TypeVectorPoint]))
         self.addParameter(
             QgsProcessingParameterExpression(
