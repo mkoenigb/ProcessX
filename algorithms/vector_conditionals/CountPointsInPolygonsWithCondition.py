@@ -205,6 +205,8 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             #request_nogeom = QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry) # Can speed up the request, but makes expressions involving geometry (e.g. $area or others) impossible
             for overlay_feat in overlay_layer_vl.getFeatures():
                 current += 1
+                if feedback.isCanceled():
+                    break
                 overlay_compare_expression_context = QgsExpressionContext()
                 overlay_compare_expression_context.setFeature(overlay_feat)
                 overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))

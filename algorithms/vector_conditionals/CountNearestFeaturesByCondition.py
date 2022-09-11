@@ -201,6 +201,8 @@ class CountNearestFeaturesByCondition(QgsProcessingAlgorithm):
             source_layer_dict2 = {}
             for source_feat in source_layer_vl.getFeatures():
                 current += 1
+                if feedback.isCanceled():
+                    break
                 source_compare_expression_context = QgsExpressionContext()
                 source_compare_expression_context.setFeature(source_feat)
                 source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
@@ -257,6 +259,8 @@ class CountNearestFeaturesByCondition(QgsProcessingAlgorithm):
             
         feedback.setProgressText('Creating result layer...')
         for source_feat in source_layer_vl.getFeatures():
+            if feedback.isCanceled():
+                break
             new_feat = QgsFeature(output_layer_fields)
             new_feat.setGeometry(source_feat.geometry())
             attridx = 0

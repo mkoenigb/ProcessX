@@ -212,6 +212,8 @@ class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
             points_layer_dict2 = {}
             for points_feat in points_layer_vl.getFeatures():
                 current += 1
+                if feedback.isCanceled():
+                    break
                 points_compare_expression_context = QgsExpressionContext()
                 points_compare_expression_context.setFeature(points_feat)
                 points_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(points_layer_vl))

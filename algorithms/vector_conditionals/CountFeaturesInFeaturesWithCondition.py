@@ -213,6 +213,8 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
             overlay_layer_dict2 = {}
             for overlay_feat in overlay_layer_vl.getFeatures():
                 current += 1
+                if feedback.isCanceled():
+                    break
                 overlay_compare_expression_context = QgsExpressionContext()
                 overlay_compare_expression_context.setFeature(overlay_feat)
                 overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
