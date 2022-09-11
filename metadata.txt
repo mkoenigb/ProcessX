@@ -6,11 +6,11 @@
 name=ProcessX
 qgisMinimumVersion=3.16
 description=This Plug-In adds a new processing provider to QGIS. It contains a variety of processing algorithms.
-version=1.2
+version=1.3
 author=Mario Koenigbauer
 email=mkoenigb@gmx.de
 
-about=This Plug-In provides a collection of various processing algorithms for QGIS
+about=This Plug-In provides a collection of various processing algorithms for QGIS. For example "Join Attributes by Nearest with Condition", "Create Nested Grid", "Nearest Points To Path", "Conditional Intersection", etc. See Changelog or Readme for a complete list and more details
 
 tracker=https://github.com/mkoenigb/ProcessX/issues
 repository=https://github.com/mkoenigb/ProcessX
@@ -21,6 +21,9 @@ repository=https://github.com/mkoenigb/ProcessX
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    v1.3
+	Added algorithms:
+	- Count Nearest Features by Condition
     v1.2
 	Added algorithms:
 	- Snap Vertices to nearest Points by Condition
