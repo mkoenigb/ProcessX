@@ -24,6 +24,8 @@ changelog=
     v1.3
 	Added algorithms:
 	- Count Nearest Features by Condition
+	Improvements:
+	- Added some missing feedback.isCanceled() listeners
     v1.2
 	Added algorithms:
 	- Snap Vertices to nearest Points by Condition
