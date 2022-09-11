@@ -149,6 +149,8 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             source_layer_custom_ids = {}
             for source_feat in source_layer.getFeatures():
                 current += 1
+                if feedback.isCanceled():
+                    break
                 source_groupby_expression_context = QgsExpressionContext()
                 source_groupby_expression_context.setFeature(source_feat)
                 source_groupby_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))

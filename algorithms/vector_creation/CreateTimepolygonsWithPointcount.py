@@ -98,10 +98,14 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
         
         feedback.setProgressText('Start processing...')
         for current_interval in range(0,total_seconds,intervalsec): 
+            if feedback.isCanceled():
+                break
             current_start_datetime = start_date + timedelta(seconds = current_interval)
             current_end_datetime = (start_date + timedelta(seconds = current_interval+intervalsec) - timedelta(seconds = 1))
             for polygon in lyr_polygons.getFeatures():
                 current += 1
+                if feedback.isCanceled():
+                    break
                 new_feat = QgsFeature(fields)
                 new_feat.setGeometry(polygon.geometry())
                 attridx = 0
@@ -125,9 +129,6 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
                             if not count_point_multiple_times:
                                 idx_points.deleteFeature(point) # dont count a point twice, removing it from the index speeds up the code around 25%
                         
-                if feedback.isCanceled():
-                    break
-                    
                 sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
                 feedback.setProgress(int(current * total))
                 
