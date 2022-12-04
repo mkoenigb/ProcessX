@@ -135,6 +135,8 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
             #speed_km_per_h = speed_m_per_s * 3.6
             
             for source_part in source_geom.parts():
+                if feedback.isCanceled():
+                    break
                 part_id += 1
                 source_part_geom = QgsGeometry.fromPolyline(source_part)
                 source_part_length = source_part_geom.length()
@@ -142,6 +144,8 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
                 segment_startdistance = 0
                 segment_enddistance = source_interpolation_density_expr_result
                 for segment in range(0,nsegments):
+                    if feedback.isCanceled():
+                        break
                     segment_id += 1
                     segment_linestring = source_part.curveSubstring(segment_startdistance,segment_enddistance)
                     segment_geom = QgsGeometry.fromPolyline(segment_linestring)
