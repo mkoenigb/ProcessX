@@ -65,14 +65,17 @@ class CreatePolygonFromExtent(QgsProcessingAlgorithm):
         output_layer_fields.append(QgsField('area', QVariant.Double))
         output_layer_fields.append(QgsField('perimeter', QVariant.Double))
         
-        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, output_layer_fields, QgsWkbTypes.Polygon, extent_crs)
+        
         feedback.setProgress(0)
         feedback.setProgressText('Start processing...')
+        
         target_crs = extent_crs
         if crs.isValid():
             source_crs = extent_crs
             target_crs = crs
             extent_geom.transform(QgsCoordinateTransform(source_crs, target_crs, QgsProject.instance()))
+            
+        (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context, output_layer_fields, QgsWkbTypes.Polygon, target_crs)
         
         new_feat = QgsFeature(output_layer_fields)
         new_feat.setGeometry(extent_geom)
