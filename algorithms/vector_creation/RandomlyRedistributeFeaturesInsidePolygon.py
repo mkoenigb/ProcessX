@@ -53,7 +53,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                                                                    'Take a random polygon out of the overlays',
                                                                    'Build a uniary union polygon of all overlays',
                                                                    'Build an intersection polygon of all overlays that intersect with the centroid'
-                                                                   ], defaultValue = 0, allowMultiple = False))
+                                                                   ], defaultValue = 1, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Redistributed')))
