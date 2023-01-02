@@ -3,7 +3,6 @@
 Author: Mario Königbauer (mkoenigb@gmx.de)
 (C) 2022 - today by Mario Koenigbauer
 License: GNU General Public License v3.0
-
 /***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
