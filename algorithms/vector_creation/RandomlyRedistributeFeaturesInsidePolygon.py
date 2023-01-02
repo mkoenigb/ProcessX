@@ -26,7 +26,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
     OVERLAY_LYR = 'OVERLAY_LYR'
     OVERLAY_FILTER_EXPRESSION = 'OVERLAY_FILTER_EXPRESSION'
     MAX_TRY = 'MAX_TRY'
-    METHOD = 'METHOD'
+    HANDLE_MULTIPLE_OVERLAYS = 'HANDLE_MULTIPLE_OVERLAYS'
     OUTPUT = 'OUTPUT'
     OUTPUT_POLYGONS = 'OUTPUT_POLYGONS'
     
@@ -40,7 +40,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterFeatureSource(
-                self.OVERLAY_LYR, self.tr('Overlay Polygon'), [QgsProcessing.TypeVectorPolygon]))
+                self.OVERLAY_LYR, self.tr('Overlay Polygon Layer'), [QgsProcessing.TypeVectorPolygon]))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.OVERLAY_FILTER_EXPRESSION, self.tr('Filter-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
@@ -49,11 +49,11 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                 self.MAX_TRY, self.tr('Maximum tries to randomly translate source geometry inside overlay polygon (0 means infinite)'), defaultValue = 0, minValue = 0, type = 0)) # type 0 = Int
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.METHOD, self.tr('Handle multiple overlays'), ['Take the first overlay polygon only',
-                                                                   'Take a random polygon out of the overlays',
-                                                                   'Build a uniary union polygon of all overlays',
-                                                                   'Build an intersection polygon of all overlays that intersect with the centroid'
-                                                                   ], defaultValue = 1, allowMultiple = False))
+                self.HANDLE_MULTIPLE_OVERLAYS, self.tr('Handle multiple overlays'), ['Take the first overlay polygon only',
+                                                                                     'Take a random polygon out of the overlays',
+                                                                                     'Build a uniary union polygon of all overlays',
+                                                                                     'Build an intersection polygon of all overlays that intersect with the centroid'
+                                                                                     ], defaultValue = 1, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Redistributed')))
@@ -72,7 +72,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
         overlay_filter_expression = self.parameterAsExpression(parameters, self.OVERLAY_FILTER_EXPRESSION, context)
         overlay_filter_expression = QgsExpression(overlay_filter_expression)
         max_try = self.parameterAsInt(parameters, self.MAX_TRY, context)
-        method = self.parameterAsInt(parameters, self.METHOD, context)
+        handle_multiple_overlays = self.parameterAsInt(parameters, self.HANDLE_MULTIPLE_OVERLAYS, context)
         
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
                                                source_layer.fields(), source_layer.wkbType(),
@@ -115,21 +115,21 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                     if not source_feat.geometry().within(current_overlay_geom):
                         continue
                         
-                    if method == 0:
+                    if handle_multiple_overlays == 0:
                         overlay_geom = current_overlay_geom
                         break
-                    elif method == 3:
+                    elif handle_multiple_overlays == 3:
                         if current_overlay_geom.intersects(source_feat.geometry().centroid()):
                             intersecting_geoms.append(current_overlay_geom)
                     else:
                         intersecting_geoms.append(current_overlay_geom)
                     
-                if method != 0 and intersecting_geoms:
-                    if method == 1:
+                if handle_multiple_overlays != 0 and intersecting_geoms:
+                    if handle_multiple_overlays == 1:
                         overlay_geom = random.choice(intersecting_geoms)
-                    if method == 2:
+                    if handle_multiple_overlays == 2:
                         overlay_geom = QgsGeometry().unaryUnion(intersecting_geoms)
-                    if method == 3:
+                    if handle_multiple_overlays == 3:
                         if len(intersecting_geoms) == 1:
                             overlay_geom = intersecting_geoms[0]
                         else:
@@ -198,9 +198,9 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm redistributes features randomly inside a given polygon by using translate in x and y direction. z and m values are not considered.\n'
+        'This algorithm redistributes features randomly inside a given polygon by using translate in x and y direction. z and m values are not considered. The source layer can be of multi- or singletype and contain points, lines or polygons.\n'
         'You can choose between different methods on how to handle the overlay / polygon features, if the source feature is within multiple overlay polygons.\n'
         'You can also add these polygons used for redistributing the source features as an optional output. This output is set to skip by default.\n'
         'If a feature is not within at least one polygon, its geometry will not be modified.\n'
-        'You can also set a limit for the maximum tries of randomly translating the source feature. If no match is found before this limit is exceeded, the source features geometry will not be changed.\n'
+        'You can also set a limit for the maximum tries of randomly translating the source feature. If no match is found before this limit is exceeded, the source features geometry remain unchanged.\n'
         )
