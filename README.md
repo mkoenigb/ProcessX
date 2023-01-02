@@ -21,6 +21,8 @@ The algorithms are:
 - (New in v1.0) **Geometry Layer From Geojson String Field**: Creates a duplicated layer of the input with modified geometry, taken from a field with a valid GeoJSON-String.
 - (New in v1.1) **Create Nested Grid**: Creates a parent grid and x child grids. You can choose how many childcells a parent shall have in x and y direction.
 - (New in v1.2) **Nearest Points to Path**: Connects points to paths based on their distance.
+- (New in v1.4) **Create Polygon From Extent**: Takes an extent as input and an optional CRS and creates a new polygon layer from it with some basic attributes.
+- (New in v1.4) **Randomly Redistribute Features Inside Polygon**: Takes a point, line or polygon layer as input and redistributes its features randomly inside a polygon the feature is within.
 
 ### Vector - Interpolation
 - (New in v1.3) **Interpolate DateTime Along Line**: Segmentizes a line by a given distance and interpolates Start- and End-DateTime for these segments. This algorithm is designed for animating lines with Temporal Controller.

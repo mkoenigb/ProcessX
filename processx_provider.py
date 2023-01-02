@@ -47,6 +47,8 @@ from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
 from .algorithms.vector_creation.GeometryLayerFromGeojsonStringField import *
 from .algorithms.vector_creation.CreateNestedGrid import *
 from .algorithms.vector_creation.NearestPointsToPath import *
+from .algorithms.vector_creation.CreatePolygonFromExtent import *
+from .algorithms.vector_creation.RandomlyRedistributeFeaturesInsidePolygon import *
 # Vector - Interpolation
 from .algorithms.vector_interpolation.InterpolateDateTimeAlongLine import *
 # OpenTripPlanner
@@ -87,6 +89,8 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(GeometryLayerFromGeojsonStringField())
         self.addAlgorithm(CreateNestedGrid())
         self.addAlgorithm(NearestPointsToPath())
+        self.addAlgorithm(CreatePolygonFromExtent())
+        self.addAlgorithm(RandomlyRedistributeFeaturesInsidePolygon())
         # Vector - Interpolation
         self.addAlgorithm(InterpolateDateTimeAlongLine())
         # OpenTripPlanner
