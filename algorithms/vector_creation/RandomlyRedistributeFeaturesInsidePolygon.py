@@ -14,9 +14,9 @@ License: GNU General Public License v3.0
  ***************************************************************************/
 """
 
-import processing, random, math, copy
+import processing, random, math
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPoint, QgsPointXY,
+from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPoint, QgsPointXY, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterEnum)
 
@@ -79,7 +79,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                                                source_layer.sourceCrs())
         
         (sink2, dest_id2) = self.parameterAsSink(parameters, self.OUTPUT_POLYGONS, context,
-                                               source_layer.fields(), 6, # 6=MultiPolygon... overlay_layer.wkbType().multiType(),
+                                               source_layer.fields(), QgsWkbTypes.multiType(overlay_layer.wkbType()),
                                                overlay_layer.sourceCrs())
             
         if source_filter_expression not in (QgsExpression(''),QgsExpression(None)):
@@ -155,7 +155,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                             aborted = True
                             break
                         whilecount += 1
-                        new_geom = source_feat.geometry() # We cannot use source_geom here as it would just create a reference to the source_geom variable. Using copy.copy() or copy.deepcopy() throws an error....
+                        new_geom = source_feat.geometry()
                         new_geom.translate(dx=random.uniform(overlay_max*-1,overlay_max),dy=random.uniform(overlay_max*-1,overlay_max))
                         if overlay_geometryengine.contains(new_geom.constGet()):
                             inside = True
