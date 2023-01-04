@@ -291,7 +291,7 @@ class CountFeaturesInFeaturesWithCondition(QgsProcessingAlgorithm):
                     else:
                         geometrictest.append(False)
                 if 4 in method:
-                    if source_feat_geometryengine.equals(overlay_feat_geom.constGet()):
+                    if source_feat_geom.equals(overlay_feat_geom):
                         geometrictest.append(True)
                     else:
                         geometrictest.append(False)
