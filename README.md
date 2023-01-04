@@ -15,6 +15,7 @@ The algorithms are:
 - (New in v1.1) **Count Points in Polygons With Condition**: Counts points in polygons (intersects or within) if an expression condition returns true (This algorithm is a lot faster than "Count Features In Features With Condition" when counting 2D-Single-Points in Polygons).
 - (New in v1.2) **Snap Vertices to nearest Points by Condition**: Snaps the vertices of a given layer (singleline, multiline, polygon or point) to the nearest point of a given point layer by optional attribute and distance conditions.
 - (New in v1.3) **Count Nearest Features by Condition**: Counts the number of nearby features by a given maximum distance and optional attribute condition(s). You can also set whether a feature should be counted only once, if so, it will only be counted to the nearest feature.
+- (New in v1.4) **Count Features in Features by Category**: Counts features in features (both can be Points, Lines or Polygons of any type) per a given category, evaluated either via an expression or a field.
 
 ### Vector - Creation
 - (New in v1.0) **Create Timepolygons With Pointcount**: Creates x duplicates of given polygons in a given timerange with from- and to-timestamp and the pointcount falling inbetween this timerange and geometry.

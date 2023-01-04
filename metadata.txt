@@ -25,8 +25,9 @@ changelog=
 	Added algorithms:
 	- Create Polygon from Extent
 	- Randomly Redistribute Features inside Polygon
+	- Count Features in Features by Category
 	Improvements:
-	- None
+	- Fixed geometric predicate "equals" in CountFeaturesInFeaturesWithCondition
     v1.3
 	Added algorithms:
 	- Count Nearest Features by Condition
