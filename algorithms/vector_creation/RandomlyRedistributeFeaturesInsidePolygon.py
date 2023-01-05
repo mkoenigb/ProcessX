@@ -18,13 +18,14 @@ import processing, random, math
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPoint, QgsPointXY, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm,
-                       QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterEnum)
+                       QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterEnum, QgsProcessingParameterBoolean)
 
 class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
     SOURCE_FILTER_EXPRESSION = 'SOURCE_FILTER_EXPRESSION'
     OVERLAY_LYR = 'OVERLAY_LYR'
     OVERLAY_FILTER_EXPRESSION = 'OVERLAY_FILTER_EXPRESSION'
+    ROTATE = 'ROTATE'
     MAX_TRY = 'MAX_TRY'
     HANDLE_MULTIPLE_OVERLAYS = 'HANDLE_MULTIPLE_OVERLAYS'
     OUTPUT = 'OUTPUT'
@@ -44,6 +45,9 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.OVERLAY_FILTER_EXPRESSION, self.tr('Filter-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
+        self.addParameter(
+            QgsProcessingParameterBoolean(
+                self.ROTATE, self.tr('Also rotate features randomly'), defaultValue = True))
         self.addParameter(
             QgsProcessingParameterNumber(
                 self.MAX_TRY, self.tr('Maximum tries to randomly translate source geometry inside overlay polygon (0 means infinite)'), defaultValue = 0, minValue = 0, type = 0)) # type 0 = Int
@@ -71,6 +75,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
         overlay_layer_vl = self.parameterAsLayer(parameters, self.OVERLAY_LYR, context)
         overlay_filter_expression = self.parameterAsExpression(parameters, self.OVERLAY_FILTER_EXPRESSION, context)
         overlay_filter_expression = QgsExpression(overlay_filter_expression)
+        rotate = self.parameterAsBool(parameters, self.ROTATE, context)
         max_try = self.parameterAsInt(parameters, self.MAX_TRY, context)
         handle_multiple_overlays = self.parameterAsInt(parameters, self.HANDLE_MULTIPLE_OVERLAYS, context)
         
@@ -155,8 +160,12 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                             aborted = True
                             break
                         whilecount += 1
+                        if whilecount % 10000 == 0:
+                            feedback.pushWarning('Trying to redistribute feature ' + str(source_feat.id()) + ' in attempt #' + str(whilecount) + ' now with still no match. Consider cancelling the process or keep waiting.')
                         new_geom = source_feat.geometry()
                         new_geom.translate(dx=random.uniform(overlay_max*-1,overlay_max),dy=random.uniform(overlay_max*-1,overlay_max))
+                        if rotate:
+                            new_geom.rotate(rotation=random.uniform(0,360),center=QgsPointXY(source_feat.geometry().centroid().asPoint()))
                         if overlay_geometryengine.contains(new_geom.constGet()):
                             inside = True
                             
@@ -198,7 +207,8 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm redistributes features randomly inside a given polygon by using translate in x and y direction. z and m values are not considered. The source layer can be of multi- or singletype and contain points, lines or polygons.\n'
+        'This algorithm redistributes features randomly inside a given polygon by using translate in x and y direction. You can also choose to rotate the features randomly. '
+        'z and m values are not considered. The source layer can be of multi- or singletype and contain points, lines or polygons.\n'
         'You can choose between different methods on how to handle the overlay / polygon features, if the source feature is within multiple overlay polygons.\n'
         'You can also add these polygons used for redistributing the source features as an optional output. This output is set to skip by default.\n'
         'If a feature is not within at least one polygon, its geometry will not be modified.\n'
