@@ -148,15 +148,15 @@ class CountFeaturesInFeaturesByCategory(QgsProcessingAlgorithm):
         categories.sort()
         
         cl = len(categories)
-        feedback.setProgressText('Creating counts for ' + str(cl) + ' different categories')
+        feedback.setProgressText('Creating counts for ' + str(cl) + ' different categories...')
         
         if output_structure == 1:
             if cl > 250:
-                feedback.pushWarning('Output layer will have more than ' + str(cl) + ' category fields')
+                feedback.pushWarning('WARNING: Output layer will have more than ' + str(cl) + ' category fields. Expect QGIS to crash when you open the attribute table of the result!')
         if output_structure == 2:
             cl = sum(len(str(s)) for s in categories)
             if cl > 1000:
-                feedback.pushWarning('Output attributes will have more than ' + str(cl) + ' characters')
+                feedback.pushWarning('WARNING: Output attributes will have more than ' + str(cl) + ' characters. Expect QGIS to crash when you open the attribute table of the result!')
         
         feedback.setProgressText('Setting up output structure...')
         field_name_dict = {
