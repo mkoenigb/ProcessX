@@ -14,7 +14,7 @@ License: GNU General Public License v3.0
  ***************************************************************************/
 """
 
-import operator, processing
+import processing
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
@@ -131,7 +131,6 @@ class CountFeaturesInFeaturesByCategory(QgsProcessingAlgorithm):
             
         feedback.setProgressText('Evaluating expressions...')
         overlay_layer_dict = {}
-        overlay_layer_dict2 = {}
         for overlay_feat in overlay_layer_vl.getFeatures(): # setting subset to nogeometry would speed up things but would make expressions using geometry not possible..
             current += 1
             if feedback.isCanceled():
