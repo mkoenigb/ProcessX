@@ -210,18 +210,18 @@ class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
             feedback.setProgressText('Evaluating expressions...')
             points_layer_dict = {}
             points_layer_dict2 = {}
+            points_compare_expression_context = QgsExpressionContext()
+            points_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(points_layer_vl))
+            points_compare_expression_context2 = QgsExpressionContext()
+            points_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(points_layer_vl))
             for points_feat in points_layer_vl.getFeatures():
                 current += 1
                 if feedback.isCanceled():
                     break
-                points_compare_expression_context = QgsExpressionContext()
                 points_compare_expression_context.setFeature(points_feat)
-                points_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(points_layer_vl))
                 points_compare_expression_result = points_compare_expression.evaluate(points_compare_expression_context)
                 points_layer_dict[points_feat.id()] = points_compare_expression_result 
-                points_compare_expression_context2 = QgsExpressionContext()
                 points_compare_expression_context2.setFeature(points_feat)
-                points_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(points_layer_vl))
                 points_compare_expression_result2 = points_compare_expression2.evaluate(points_compare_expression_context2)
                 points_layer_dict2[points_feat.id()] = points_compare_expression_result2
                 feedback.setProgress(int(current * total))
@@ -236,6 +236,10 @@ class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
         feedback.setProgressText('Start processing...')
         # https://gis.stackexchange.com/questions/411126/modifying-specific-vertices-of-multilinestring-using-pyqgis
         # https://gis.stackexchange.com/a/411157/107424
+        source_compare_expression_context = QgsExpressionContext()
+        source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        source_compare_expression_context2 = QgsExpressionContext()
+        source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
         for line_feat in source_layer_vl.getFeatures(source_orderby_request):
             if feedback.isCanceled():
                 break
@@ -247,13 +251,9 @@ class SnapVerticesToNearestPointsByCondition(QgsProcessingAlgorithm):
             line_vertex_id = 0
             n_vertices_line_geom = len([v for i, v in enumerate(line_geom.vertices())]) # does not support len(), count() or whatever, so lets just do it complicated...
             if comparisons:
-                source_compare_expression_context = QgsExpressionContext()
                 source_compare_expression_context.setFeature(line_feat)
-                source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result = source_compare_expression.evaluate(source_compare_expression_context)
-                source_compare_expression_context2 = QgsExpressionContext()
                 source_compare_expression_context2.setFeature(line_feat)
-                source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
             for line_part_id, line_part in enumerate(line_geom.parts()):
                 if feedback.isCanceled():
