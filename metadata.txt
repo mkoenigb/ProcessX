@@ -6,7 +6,7 @@
 name=ProcessX
 qgisMinimumVersion=3.16
 description=This Plug-In adds a new processing provider to QGIS. It contains a variety of processing algorithms.
-version=1.4
+version=1.5
 author=Mario Koenigbauer
 email=mkoenigb@gmx.de
 
@@ -21,6 +21,12 @@ repository=https://github.com/mkoenigb/ProcessX
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    v1.5
+	Added algorithms:
+	- Translate Duplicate Features to Columns
+	Improvements:
+	- Removed unused operator import from CountFeaturesInFeaturesByCategory
+	- Removed unused spatial index from RandomlyRedistributeFeaturesInsidePolygon
     v1.4
 	Added algorithms:
 	- Create Polygon from Extent

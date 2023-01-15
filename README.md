@@ -24,10 +24,11 @@ The algorithms are:
 - (New in v1.2) **Nearest Points to Path**: Connects points to paths based on their distance.
 - (New in v1.4) **Create Polygon From Extent**: Takes an extent as input and an optional CRS and creates a new polygon layer from it with some basic attributes.
 - (New in v1.4) **Randomly Redistribute Features Inside Polygon**: Takes a point, line or polygon layer as input and redistributes its features randomly inside a polygon the feature is within.
+- (New in v1.5) **Translate Duplicate Features to Columns**: This algorithm translates features (rows) to columns by an duplicate-identifier, which can be an expression or a field.
 
 ### Vector - Interpolation
 - (New in v1.3) **Interpolate DateTime Along Line**: Segmentizes a line by a given distance and interpolates Start- and End-DateTime for these segments. This algorithm is designed for animating lines with Temporal Controller.
 
 ### OpenTripPlanner
-- (New in v1.0) **OtpRoutes**: Requests routes from an OpenTripPlanner instance and creates a linelayer from the returned geometry and attributes.
-- (New in v1.0) **OtpTraveltime**: Adds some attributes to a given layer based on OpenTripPlanner routing results.
+- (New in v1.0) **OTP Routes**: Requests routes from an OpenTripPlanner instance and creates a linelayer from the returned geometry and attributes.
+- (New in v1.0) **OTP Traveltime**: Adds some attributes to a given layer based on OpenTripPlanner routing results.

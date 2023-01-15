@@ -50,6 +50,7 @@ from .algorithms.vector_creation.CreateNestedGrid import *
 from .algorithms.vector_creation.NearestPointsToPath import *
 from .algorithms.vector_creation.CreatePolygonFromExtent import *
 from .algorithms.vector_creation.RandomlyRedistributeFeaturesInsidePolygon import *
+from .algorithms.vector_creation.TranslateDuplicateFeaturesToColumns import *
 # Vector - Interpolation
 from .algorithms.vector_interpolation.InterpolateDateTimeAlongLine import *
 # OpenTripPlanner
@@ -93,6 +94,7 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(NearestPointsToPath())
         self.addAlgorithm(CreatePolygonFromExtent())
         self.addAlgorithm(RandomlyRedistributeFeaturesInsidePolygon())
+        self.addAlgorithm(TranslateDuplicateFeaturesToColumns())
         # Vector - Interpolation
         self.addAlgorithm(InterpolateDateTimeAlongLine())
         # OpenTripPlanner
