@@ -28,6 +28,7 @@ changelog=
 	Improvements:
 	- Removed unused operator import from CountFeaturesInFeaturesByCategory
 	- Removed unused spatial index from RandomlyRedistributeFeaturesInsidePolygon
+	- Improved performance of many algorithms by moving expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes()) outside of the loops
     v1.4
 	Added algorithms:
 	- Create Polygon from Extent
