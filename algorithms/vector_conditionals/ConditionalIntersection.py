@@ -202,6 +202,14 @@ class ConditionalIntersection(QgsProcessingAlgorithm):
             source_orderby_request.setOrderBy(order_by)
         
         feedback.setProgressText('Start processing...')
+        source_compare_expression_context = QgsExpressionContext()
+        source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        source_compare_expression_context2 = QgsExpressionContext()
+        source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        overlay_compare_expression_context = QgsExpressionContext()
+        overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
+        overlay_compare_expression_context2 = QgsExpressionContext()
+        overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
         for current, source_feat in enumerate(source_layer_vl.getFeatures(source_orderby_request)):
             if feedback.isCanceled():
                 break
@@ -216,13 +224,9 @@ class ConditionalIntersection(QgsProcessingAlgorithm):
                 bbox_intersecting.remove(source_feat.id())
             
             if comparisons:
-                source_compare_expression_context = QgsExpressionContext()
                 source_compare_expression_context.setFeature(source_feat)
-                source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result = source_compare_expression.evaluate(source_compare_expression_context)
-                source_compare_expression_context2 = QgsExpressionContext()
                 source_compare_expression_context2.setFeature(source_feat)
-                source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
             
             for overlay_feat_id in bbox_intersecting:
@@ -248,13 +252,9 @@ class ConditionalIntersection(QgsProcessingAlgorithm):
                         if intersect_multiple is False:
                             overlay_layer_idx.deleteFeature(overlay_feat)
                     else:
-                        overlay_compare_expression_context = QgsExpressionContext()
                         overlay_compare_expression_context.setFeature(overlay_feat)
-                        overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
                         overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
-                        overlay_compare_expression_context2 = QgsExpressionContext()
                         overlay_compare_expression_context2.setFeature(overlay_feat)
-                        overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
                         overlay_compare_expression_result2 = overlay_compare_expression2.evaluate(overlay_compare_expression_context2)
                         if concat_op(op(source_compare_expression_result, overlay_compare_expression_result),op2(source_compare_expression_result2, overlay_compare_expression_result2)):
                             new_feat = QgsFeature(output_layer_fields)
