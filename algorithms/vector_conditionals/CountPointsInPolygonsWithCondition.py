@@ -202,19 +202,19 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             #overlay_layer_dict = {feat.id():feat for feat in overlay_layer_vl.getFeatures()}
             overlay_layer_dict = {}
             overlay_layer_dict2 = {}
+            overlay_compare_expression_context = QgsExpressionContext()
+            overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
+            overlay_compare_expression_context2 = QgsExpressionContext()
+            overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
             #request_nogeom = QgsFeatureRequest().setFlags(QgsFeatureRequest.NoGeometry) # Can speed up the request, but makes expressions involving geometry (e.g. $area or others) impossible
             for overlay_feat in overlay_layer_vl.getFeatures():
                 current += 1
                 if feedback.isCanceled():
                     break
-                overlay_compare_expression_context = QgsExpressionContext()
                 overlay_compare_expression_context.setFeature(overlay_feat)
-                overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
                 overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
                 overlay_layer_dict[overlay_feat.id()] = overlay_compare_expression_result 
-                overlay_compare_expression_context2 = QgsExpressionContext()
                 overlay_compare_expression_context2.setFeature(overlay_feat)
-                overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
                 overlay_compare_expression_result2 = overlay_compare_expression2.evaluate(overlay_compare_expression_context2)
                 overlay_layer_dict2[overlay_feat.id()] = overlay_compare_expression_result2
                 feedback.setProgress(int(current * total))
@@ -226,6 +226,10 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             source_orderby_request.setOrderBy(order_by)
         
         feedback.setProgressText('Start processing...')
+        source_compare_expression_context = QgsExpressionContext()
+        source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        source_compare_expression_context2 = QgsExpressionContext()
+        source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
         for source_feat in source_layer_vl.getFeatures(source_orderby_request):
             current += 1
             if feedback.isCanceled():
@@ -238,13 +242,9 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
             matching_counter = 0
             
             if comparisons:
-                source_compare_expression_context = QgsExpressionContext()
                 source_compare_expression_context.setFeature(source_feat)
-                source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result = source_compare_expression.evaluate(source_compare_expression_context)
-                source_compare_expression_context2 = QgsExpressionContext()
                 source_compare_expression_context2.setFeature(source_feat)
-                source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
             
             for overlay_feat in overlay_features:
