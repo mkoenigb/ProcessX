@@ -100,6 +100,12 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
         total = 100.0 / source_layer_vl.featureCount() if source_layer_vl.featureCount() else 0
         
         feedback.setProgressText('Start processing...')
+        source_start_time_expr_context = QgsExpressionContext()
+        source_start_time_expr_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        source_end_time_expr_context = QgsExpressionContext()
+        source_end_time_expr_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        source_interpolation_density_expr_context = QgsExpressionContext()
+        source_interpolation_density_expr_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
         for current, source_feat in enumerate(source_layer.getFeatures()):
             if feedback.isCanceled():
                 break
@@ -108,14 +114,10 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
             source_geom = source_feat.geometry()
             source_length = source_geom.length()
             
-            source_start_time_expr_context = QgsExpressionContext()
             source_start_time_expr_context.setFeature(source_feat)
-            source_start_time_expr_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
             source_start_time_expr_result = source_start_time_expr.evaluate(source_start_time_expr_context)
             
-            source_end_time_expr_context = QgsExpressionContext()
             source_end_time_expr_context.setFeature(source_feat)
-            source_end_time_expr_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
             source_end_time_expr_result = source_end_time_expr.evaluate(source_end_time_expr_context)
             
             if not 'QDateTime' in str(type(source_start_time_expr_result)) or not 'QDateTime' in str(type(source_end_time_expr_result)):
@@ -125,9 +127,7 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
                 feedback.pushWarning('Feature ' + str(source_feat.id()) + ' does not have a valid QDateTime! Skipping feature...')
                 continue
             
-            source_interpolation_density_expr_context = QgsExpressionContext()
             source_interpolation_density_expr_context.setFeature(source_feat)
-            source_interpolation_density_expr_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
             source_interpolation_density_expr_result = source_interpolation_density_expr.evaluate(source_interpolation_density_expr_context)
             
             seconds_needed = source_start_time_expr_result.secsTo(source_end_time_expr_result)
