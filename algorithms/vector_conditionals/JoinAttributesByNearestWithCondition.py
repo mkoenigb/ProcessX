@@ -246,6 +246,14 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
             source_orderby_request.setOrderBy(order_by)
             
         feedback.setProgressText('Start processing...')
+        source_compare_expression_context = QgsExpressionContext()
+        source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        source_compare_expression_context2 = QgsExpressionContext()
+        source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        join_compare_expression_context = QgsExpressionContext()
+        join_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(join_layer_vl))
+        join_compare_expression_context2 = QgsExpressionContext()
+        join_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(join_layer_vl))
         for current, source_feat in enumerate(source_layer.getFeatures(source_orderby_request)):
             if feedback.isCanceled():
                 break
@@ -260,13 +268,9 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
                 nearest_neighbors = join_layer_idx.nearestNeighbor(source_feat_geom, neighbors = join_n, maxDistance = join_dist)
             else:
                 nearest_neighbors = join_layer_idx.nearestNeighbor(source_feat_geom, neighbors = -1, maxDistance = join_dist)
-                source_compare_expression_context = QgsExpressionContext()
                 source_compare_expression_context.setFeature(source_feat)
-                source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result = source_compare_expression.evaluate(source_compare_expression_context)
-                source_compare_expression_context2 = QgsExpressionContext()
                 source_compare_expression_context2.setFeature(source_feat)
-                source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
             
             if sourcejoinlayerequal is True:
@@ -297,13 +301,9 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
                     if join_multiple is False:
                         join_layer_idx.deleteFeature(join_feat)
                 else:
-                    join_compare_expression_context = QgsExpressionContext()
                     join_compare_expression_context.setFeature(join_feat)
-                    join_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(join_layer_vl))
                     join_compare_expression_result = join_compare_expression.evaluate(join_compare_expression_context)
-                    join_compare_expression_context2 = QgsExpressionContext()
                     join_compare_expression_context2.setFeature(join_feat)
-                    join_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(join_layer_vl))
                     join_compare_expression_result2 = join_compare_expression2.evaluate(join_compare_expression_context2)
                     
                     if concat_op(op(source_compare_expression_result, join_compare_expression_result),op2(source_compare_expression_result2, join_compare_expression_result2)):
