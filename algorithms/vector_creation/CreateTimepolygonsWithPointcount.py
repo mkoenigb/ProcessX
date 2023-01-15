@@ -97,6 +97,8 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
         current = 0
         
         feedback.setProgressText('Start processing...')
+        point_time_expression_context = QgsExpressionContext()
+        point_time_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyr_points))
         for current_interval in range(0,total_seconds,intervalsec): 
             if feedback.isCanceled():
                 break
@@ -119,9 +121,7 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
                     point = lyr_points.getFeature(pointid)
                     if feedback.isCanceled():
                         break
-                    point_time_expression_context = QgsExpressionContext()
                     point_time_expression_context.setFeature(point)
-                    point_time_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(lyr_points))
                     point_time_expression_result = point_time_expression.evaluate(point_time_expression_context)
                     if point_time_expression_result > current_start_datetime and point_time_expression_result <= current_end_datetime:
                         if point.geometry().intersects(polygon.geometry()):
