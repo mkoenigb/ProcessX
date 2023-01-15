@@ -199,24 +199,28 @@ class CountNearestFeaturesByCondition(QgsProcessingAlgorithm):
             feedback.setProgressText('Evaluating expressions...')
             source_layer_dict = {}
             source_layer_dict2 = {}
+            source_compare_expression_context = QgsExpressionContext()
+            source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+            source_compare_expression_context2 = QgsExpressionContext()
+            source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
             for source_feat in source_layer_vl.getFeatures():
                 current += 1
                 if feedback.isCanceled():
                     break
-                source_compare_expression_context = QgsExpressionContext()
                 source_compare_expression_context.setFeature(source_feat)
-                source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result = source_compare_expression.evaluate(source_compare_expression_context)
                 source_layer_dict[source_feat.id()] = source_compare_expression_result 
-                source_compare_expression_context2 = QgsExpressionContext()
                 source_compare_expression_context2.setFeature(source_feat)
-                source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
                 source_layer_dict2[source_feat.id()] = source_compare_expression_result2
                 feedback.setProgress(int(current * total))
         result_dict = {}
         
         feedback.setProgressText('Start processing...')
+        overlay_compare_expression_context = QgsExpressionContext()
+        overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
+        overlay_compare_expression_context2 = QgsExpressionContext()
+        overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
         for overlay_feat in overlay_layer_vl.getFeatures():
             current += 1
             if feedback.isCanceled():
@@ -227,13 +231,9 @@ class CountNearestFeaturesByCondition(QgsProcessingAlgorithm):
                 nearest_source_features.remove(overlay_feat.id())
             
             if comparisons:
-                overlay_compare_expression_context = QgsExpressionContext()
                 overlay_compare_expression_context.setFeature(overlay_feat)
-                overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
                 overlay_compare_expression_result = overlay_compare_expression.evaluate(overlay_compare_expression_context)
-                overlay_compare_expression_context2 = QgsExpressionContext()
                 overlay_compare_expression_context2.setFeature(overlay_feat)
-                overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
                 overlay_compare_expression_result2 = overlay_compare_expression2.evaluate(overlay_compare_expression_context2)
                         
             for source_feat_id in nearest_source_features:
