@@ -147,18 +147,18 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             feedback.setProgressText('Evaluating Group-By Expression...')
             source_layer_dict = {}
             source_layer_custom_ids = {}
+            source_groupby_expression_context = QgsExpressionContext()
+            source_groupby_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+            source_custom_id_context = QgsExpressionContext()
+            source_custom_id_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
             for source_feat in source_layer.getFeatures():
                 current += 1
                 if feedback.isCanceled():
                     break
-                source_groupby_expression_context = QgsExpressionContext()
                 source_groupby_expression_context.setFeature(source_feat)
-                source_groupby_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_groupby_expression_result = source_groupby_expression.evaluate(source_groupby_expression_context)
                 source_layer_dict[source_feat.id()] = source_groupby_expression_result 
-                source_custom_id_context = QgsExpressionContext()
                 source_custom_id_context.setFeature(source_feat)
-                source_custom_id_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
                 source_custom_id_result = source_custom_id.evaluate(source_custom_id_context)
                 source_layer_custom_ids[source_feat.id()] = str(source_custom_id_result)
                 feedback.setProgress(int(current * total))
