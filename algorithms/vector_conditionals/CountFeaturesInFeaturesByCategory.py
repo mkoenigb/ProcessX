@@ -131,13 +131,13 @@ class CountFeaturesInFeaturesByCategory(QgsProcessingAlgorithm):
             
         feedback.setProgressText('Evaluating expressions...')
         overlay_layer_dict = {}
+        overlay_category_expression_context = QgsExpressionContext()
+        overlay_category_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
         for overlay_feat in overlay_layer_vl.getFeatures(): # setting subset to nogeometry would speed up things but would make expressions using geometry not possible..
             current += 1
             if feedback.isCanceled():
                 break
-            overlay_category_expression_context = QgsExpressionContext()
             overlay_category_expression_context.setFeature(overlay_feat)
-            overlay_category_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(overlay_layer_vl))
             overlay_category_expression_result = overlay_category_expression.evaluate(overlay_category_expression_context)
             overlay_layer_dict[overlay_feat.id()] = overlay_category_expression_result 
             feedback.setProgress(int(current * total))
@@ -361,11 +361,11 @@ class CountFeaturesInFeaturesByCategory(QgsProcessingAlgorithm):
                                                         'One indicating the name of the category and one having the count of this category. '
             
             '\n<b>Create a field for each category</b>: This creates one single feature for every source feature with one field for each category containing the count of this category for this feature. '
-                                                       '<b>Warning: </b> If the number of different categories exceed the limit of maximum fields possible, this option can crash QGIS (especially when opening the attribute table). '
+                                                       '<b>Warning: </b>If the number of different categories exceed the limit of maximum fields possible, this option can crash QGIS (especially when opening the attribute table). '
             
             '\n<b>Create a dictionary/map for all categories</b>: This creates one single feature for every source feature with one field containing the results for this feature. '
                                                                  'The result will be a string in form of a Python dictionary with the category names as keys and the category counts as values, like <i>{\'cat_a\':0,\'cat_b\':13,\'cat_c\':7}</i>. '
-                                                                 '<b>Warning: </b>: If the length of the sum of all different category names exceeds the maximum string length, this option can crash QGIS (especially when opening the attribute table). '
+                                                                 '<b>Warning: </b>If the length of the sum of all different category names exceeds the maximum string length, this option can crash QGIS (especially when opening the attribute table). '
             
             '\nWith both options you are save if you do not have weird characters in the category names, a lot of different categories and the category names are quite short. If you are unsure, just use <i>Create a feature for each category</i>.'
             )
