@@ -43,6 +43,7 @@ from .algorithms.vector_conditionals.CountPointsInPolygonsWithCondition import *
 from .algorithms.vector_conditionals.SnapVerticesToNearestPointsByCondition import *
 from .algorithms.vector_conditionals.CountNearestFeaturesByCondition import *
 from .algorithms.vector_conditionals.CountFeaturesInFeaturesByCategory import *
+from .algorithms.vector_conditionals.CountNearestFeaturesByCategory import * 
 # Vector - Creation
 from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
 from .algorithms.vector_creation.GeometryLayerFromGeojsonStringField import *
@@ -87,6 +88,7 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(SnapVerticesToNearestPointsByCondition())
         self.addAlgorithm(CountNearestFeaturesByCondition())
         self.addAlgorithm(CountFeaturesInFeaturesByCategory())
+        self.addAlgorithm(CountNearestFeaturesByCategory())
         # Vector - Creation
         self.addAlgorithm(CreateTimepolygonsWithPointcount())
         self.addAlgorithm(GeometryLayerFromGeojsonStringField())

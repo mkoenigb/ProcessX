@@ -24,6 +24,7 @@ changelog=
     v1.5
 	Added algorithms:
 	- Translate Duplicate Features to Columns
+	- Count Nearest Features by Category
 	Improvements:
 	- Removed unused operator import from CountFeaturesInFeaturesByCategory
 	- Removed unused spatial index from RandomlyRedistributeFeaturesInsidePolygon
