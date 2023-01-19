@@ -17,6 +17,7 @@ The algorithms are:
 - (New in v1.3) **Count Nearest Features by Condition**: Counts the number of nearby features by a given maximum distance and optional attribute condition(s). You can also set whether a feature should be counted only once, if so, it will only be counted to the nearest feature.
 - (New in v1.4) **Count Features in Features by Category**: Counts features in features (both can be Points, Lines or Polygons of any type) per a given category, evaluated either via an expression or a field.
 - (New in v1.5) **Count Nearest Features by Category**: Counts nearest features per a given category, evaluated either via an expression or a field.
+- (New in v1.5) **Remove Self-Overlapping Portions by Condition**: Removes self overlapping portions within a layer by an optional attribute condition. You can choose the iteration order and which feature should keep overlapping parts.
 
 ### Vector - Creation
 - (New in v1.0) **Create Timepolygons With Pointcount**: Creates x duplicates of given polygons in a given timerange with from- and to-timestamp and the pointcount falling inbetween this timerange and geometry.

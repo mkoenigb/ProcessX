@@ -25,6 +25,7 @@ changelog=
 	Added algorithms:
 	- Translate Duplicate Features to Columns
 	- Count Nearest Features by Category
+	- Remove Self-Overlapping Portions by Condition
 	Improvements:
 	- Removed unused operator import from CountFeaturesInFeaturesByCategory
 	- Removed unused spatial index from RandomlyRedistributeFeaturesInsidePolygon
