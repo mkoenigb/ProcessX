@@ -40,12 +40,12 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
                 self.SOURCE_LYR, self.tr('Source Layer')))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.SOURCE_LYR_ORDERBY, self.tr('OrderBy-Expression for Source-Layer (if unused, the feature id\'s are taken'), parentLayerParameterName = 'SOURCE_LYR', optional = True, defaultValue = '$area'))
+                self.SOURCE_LYR_ORDERBY, self.tr('OrderBy-Expression for Source-Layer (if unused, the feature id\'s are taken'), parentLayerParameterName = 'SOURCE_LYR', optional = True, defaultValue = 'try($area,try($length,$id))'))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.ORDERBY_ASC, self.tr('OrderBy Method'), ['Order Ascending (Features with larger values will keep the overlapping portions)',
-                                                              'Order Descending (Features with smaller values will keep the overlapping portions)']
-                                                              , defaultValue = 0, allowMultiple = False))
+                                                              'Order Descending (Features with smaller values will keep the overlapping portions)'],
+                                                              defaultValue = 0, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
@@ -164,14 +164,15 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
             source_orderby_request.setOrderBy(order_by)
         
         feedback.setProgressText('Start processing...')
-        source_compare_expression_context = QgsExpressionContext()
-        source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
-        source_compare_expression_context2 = QgsExpressionContext()
-        source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
-        overlay_compare_expression_context = QgsExpressionContext()
-        overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
-        overlay_compare_expression_context2 = QgsExpressionContext()
-        overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        if comparisons:
+            source_compare_expression_context = QgsExpressionContext()
+            source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+            source_compare_expression_context2 = QgsExpressionContext()
+            source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+            overlay_compare_expression_context = QgsExpressionContext()
+            overlay_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+            overlay_compare_expression_context2 = QgsExpressionContext()
+            overlay_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
         for source_feat in source_layer_vl.getFeatures(source_orderby_request):
             if feedback.isCanceled():
                 break
@@ -244,5 +245,9 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm removes self overlapping portions within a layer by an optional condition.'
+        'This algorithm removes self-overlapping portions within a layer by an optional attribute condition. The layer can be of type (multi)point, (multi)line or (multi)polygon. The output layer is multitype of the input type.\n'
+        'If you use the optional attribute condition, the overlapping portions are only removed if the condition between the overlapping features is met.\n'
+        'You can choose the iteration order and therefore which feature should keep the overlapping parts.\n'
+        'The algorithm uses the predicate overlaps, so features within, touching, crosses, etc. are not considered.\n'
+        'Because the algorithm edits the features while iterating over the layer you may recognize a result, you maybe did not expect before starting the algorithm, in some rare overlap-constellations; this is by design.'
         )
