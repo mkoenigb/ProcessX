@@ -40,7 +40,7 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
                 self.SOURCE_LYR, self.tr('Source Layer')))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.SOURCE_LYR_ORDERBY, self.tr('OrderBy-Expression for Source-Layer (if unused, the feature id\'s are taken'), parentLayerParameterName = 'SOURCE_LYR', optional = True, defaultValue = 'try($area,try($length,$id))'))
+                self.SOURCE_LYR_ORDERBY, self.tr('OrderBy-Expression for Source-Layer (if unused, the feature id\'s are taken'), parentLayerParameterName = 'SOURCE_LYR', optional = True, defaultValue = 'coalesce($area,coalesce($length,coalesce($id)))'))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.ORDERBY_ASC, self.tr('OrderBy Method'), ['Order Ascending (Features with larger values will keep the overlapping portions)',
