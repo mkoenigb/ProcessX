@@ -226,7 +226,7 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
             sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
         
         if output_structure == 1:
-            if maxstrlengthexceeded == True:
+            if maxstrlengthexceeded:
                 feedback.pushWarning('WARNING: At least one output attribute will have more than ' + str(1000) + ' characters. Open the attribute table of the result carefully and expect QGIS to crash!')
         
         return {self.OUTPUT: dest_id}
