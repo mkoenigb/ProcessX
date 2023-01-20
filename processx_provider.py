@@ -45,6 +45,7 @@ from .algorithms.vector_conditionals.CountNearestFeaturesByCondition import *
 from .algorithms.vector_conditionals.CountFeaturesInFeaturesByCategory import *
 from .algorithms.vector_conditionals.CountNearestFeaturesByCategory import * 
 from .algorithms.vector_conditionals.RemoveSelfOverlappingPortionsByCondition import *
+from .algorithms.vector_conditionals.ConditionalDifference import *
 # Vector - Creation
 from .algorithms.vector_creation.CreateTimepolygonsWithPointcount import *
 from .algorithms.vector_creation.GeometryLayerFromGeojsonStringField import *
@@ -91,6 +92,7 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(CountFeaturesInFeaturesByCategory())
         self.addAlgorithm(CountNearestFeaturesByCategory())
         self.addAlgorithm(RemoveSelfOverlappingPortionsByCondition())
+        self.addAlgorithm(ConditionalDifference())
         # Vector - Creation
         self.addAlgorithm(CreateTimepolygonsWithPointcount())
         self.addAlgorithm(GeometryLayerFromGeojsonStringField())
