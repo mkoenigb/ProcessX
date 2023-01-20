@@ -20,11 +20,15 @@ from qgis.core import (QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterVectorLayer, QgsProcessingParameterEnum, QgsProcessingParameterExpression)
 
-class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
+class ConditionalDifference(QgsProcessingAlgorithm):
+    METHOD = 'METHOD'
+    CONCAT_METHOD = 'CONCAT_METHOD'
     SOURCE_LYR = 'SOURCE_LYR'
     SOURCE_LYR_ORDERBY = 'SOURCE_LYR_ORDERBY'
     ORDERBY_ASC = 'ORDERBY_ASC'
     SOURCE_FILTER_EXPRESSION = 'SOURCE_FILTER_EXPRESSION'
+    OVERLAY_LYR = 'OVERLAY_LYR'
+    OVERLAY_FILTER_EXPRESSION = 'OVERLAY_FILTER_EXPRESSION'
     SOURCE_COMPARE_EXPRESSION = 'SOURCE_COMPARE_EXPRESSION'
     SOURCE_COMPARE_EXPRESSION2 = 'SOURCE_COMPARE_EXPRESSION2'
     OVERLAY_COMPARE_EXPRESSION = 'OVERLAY_COMPARE_EXPRESSION'
@@ -35,6 +39,12 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
     OUTPUT = 'OUTPUT'
     
     def initAlgorithm(self, config=None):
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.METHOD, self.tr('Choose geometric predicate(s). (Source *predicate* Overlay; e.g. Source within Overlay)'), ['within','intersects','overlaps','contains','equals','crosses','touches'], defaultValue = 2, allowMultiple = True))
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.CONCAT_METHOD, self.tr('Choose how to handle several geometric predicates'), ['All geometric predicates must be true (AND)','At least one geometric predicate must be true (OR)'], defaultValue = 1, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterVectorLayer(
                 self.SOURCE_LYR, self.tr('Source Layer')))
@@ -50,6 +60,12 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
             QgsProcessingParameterExpression(
                 self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
+            QgsProcessingParameterVectorLayer(
+                self.OVERLAY_LYR, self.tr('Overlay Layer (Features to count)')))
+        self.addParameter(
+            QgsProcessingParameterExpression(
+                self.OVERLAY_FILTER_EXPRESSION, self.tr('Filter-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
+        self.addParameter(
             QgsProcessingParameterExpression(
                 self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
@@ -57,7 +73,7 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
                 self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (join in source)'], defaultValue = 0, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.OVERLAY_COMPARE_EXPRESSION, self.tr('Compare-Expression for Overlay-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
+                self.OVERLAY_COMPARE_EXPRESSION, self.tr('Compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False))
@@ -69,13 +85,15 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
                 self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (overlay in source)'], defaultValue = 0, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.OVERLAY_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Overlay-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
+                self.OVERLAY_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
-                self.OUTPUT, self.tr('Source Layer without Self-Intersections')))
+                self.OUTPUT, self.tr('Difference')))
 
     def processAlgorithm(self, parameters, context, feedback):
         feedback.setProgressText('Prepare processing...')
+        method = self.parameterAsEnums(parameters, self.METHOD, context)
+        concat_method = self.parameterAsInt(parameters, self.CONCAT_METHOD, context)
         #source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context)
         source_layer_vl = self.parameterAsLayer(parameters, self.SOURCE_LYR, context)
         source_orderby_expression = self.parameterAsExpression(parameters, self.SOURCE_LYR_ORDERBY, context)
@@ -85,7 +103,10 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
             orderby_asc = True
         elif orderby_asc == 1:
             orderby_asc = False
-            
+        
+        overlay_layer_vl = self.parameterAsLayer(parameters, self.OVERLAY_LYR, context)
+        overlay_filter_expression = self.parameterAsExpression(parameters, self.OVERLAY_FILTER_EXPRESSION, context)
+        overlay_filter_expression = QgsExpression(overlay_filter_expression)
         source_filter_expression = self.parameterAsExpression(parameters, self.SOURCE_FILTER_EXPRESSION, context)
         source_filter_expression = QgsExpression(source_filter_expression)
         
@@ -141,6 +162,10 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
             overlay_compare_expression2 = QgsExpression('') # Ignore eventually set fields/expressions!
             source_compare_expression2 = QgsExpression('') # Ignore eventually set fields/expressions!
             comparisons = True
+        
+        sourceoverlayequal = False
+        if source_layer_vl == overlay_layer_vl:
+            sourceoverlayequal = True
             
         output_layer_fields = source_layer_vl.fields()
         
@@ -150,13 +175,15 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
         
         if source_filter_expression not in (QgsExpression(''),QgsExpression(None)):
             source_layer_vl = source_layer_vl.materialize(QgsFeatureRequest(source_filter_expression))
+        if overlay_filter_expression not in (QgsExpression(''),QgsExpression(None)):
+            overlay_layer_vl = overlay_layer_vl.materialize(QgsFeatureRequest(overlay_filter_expression))
         source_layer_vl = source_layer_vl.materialize(QgsFeatureRequest().setFilterFids(source_layer_vl.allFeatureIds()))
         
         total = 100.0 / source_layer_vl.featureCount() if source_layer_vl.featureCount() else 0
         current = 0
         
         feedback.setProgressText('Building spatial index...')
-        overlay_layer_idx = QgsSpatialIndex(source_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
         
         source_orderby_request = QgsFeatureRequest()
         if source_orderby_expression not in (QgsExpression(''),QgsExpression(None)):
@@ -189,17 +216,69 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
             source_feat_geometryengine.prepareGeometry()
             
             overlay_features = overlay_layer_idx.intersects(source_feat_geom.boundingBox())
-            try:
-                overlay_features.remove(source_feat.id())
-            except:
-                pass
+            if sourceoverlayequal:
+                try:
+                    overlay_features.remove(source_feat.id())
+                except:
+                    pass
             
             for overlay_feat_id in overlay_features:
                 if feedback.isCanceled():
                     break
-                overlay_feat = source_layer_vl.getFeature(overlay_feat_id) # need to get it from the edited layer because the index is based on the original input
+                    
+                if sourceoverlayequal:
+                    overlay_feat = source_layer_vl.getFeature(overlay_feat_id) # need to get it from the edited layer because the index is based on the original input
+                else:
+                    overlay_feat = overlay_layer_vl.getFeature(overlay_feat_id) # if source and overlay are different layers, one could implement this way more efficient. But since it is not guaranteed, its a lot easier to implement this way
+                    
                 overlay_feat_geom = overlay_feat.geometry()
-                if source_feat_geometryengine.overlaps(overlay_feat_geom.constGet()):
+                
+                geometrictest = []
+                if 0 in method:
+                    if source_feat_geometryengine.within(overlay_feat_geom.constGet()):
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
+                if 1 in method:
+                    if source_feat_geometryengine.intersects(overlay_feat_geom.constGet()):
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
+                if 2 in method:
+                    if source_feat_geometryengine.overlaps(overlay_feat_geom.constGet()):
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
+                if 3 in method:
+                    if source_feat_geometryengine.contains(overlay_feat_geom.constGet()):
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
+                if 4 in method:
+                    if source_feat_geom.equals(overlay_feat_geom):
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
+                if 5 in method:
+                    if source_feat_geometryengine.crosses(overlay_feat_geom.constGet()):
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
+                if 6 in method:
+                    if source_feat_geometryengine.touches(overlay_feat_geom.constGet()):
+                        geometrictest.append(True)
+                    else:
+                        geometrictest.append(False)
+                        
+                geodoit = False
+                if concat_method == 0: # and
+                    if not False in geometrictest:
+                        geodoit = True
+                elif concat_method == 1: # or
+                    if True in geometrictest:
+                        geodoit = True
+                
+                if geodoit:
                     doit = False
                     if comparisons:
                         overlay_compare_expression_context.setFeature(overlay_feat)
@@ -229,13 +308,13 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return RemoveSelfOverlappingPortionsByCondition()
+        return ConditionalDifference()
 
     def name(self):
-        return 'RemoveSelfOverlappingPortionsByCondition'
+        return 'ConditionalDifference'
 
     def displayName(self):
-        return self.tr('Remove Self-Overlapping Portions by Condition')
+        return self.tr('Conditional Difference')
 
     def group(self):
         return self.tr(self.groupId())
@@ -245,9 +324,12 @@ class RemoveSelfOverlappingPortionsByCondition(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm removes self-overlapping portions within a layer by an optional attribute condition. The layer can be of type (multi)point, (multi)line or (multi)polygon. The output layer is multitype of the input type.\n'
-        'If you use the optional attribute condition, the overlapping portions are only removed if the condition between the overlapping features is met.\n'
-        'You can choose the iteration order and therefore which feature should keep the overlapping parts.\n'
-        'The algorithm uses the predicate overlaps, so features within, touching, crosses, etc. are not considered.\n'
-        'Because the algorithm edits the features while iterating over the layer you may recognize a result, you maybe did not expect before starting the algorithm, in some rare overlap-constellations; this is by design.'
+        'This algorithms builds a difference between two layers by an optional attribute condition. Both layers can basically be of any type, but of course not all constellation make sense and not all constellations will return a valid output. '
+        'The output is an edited copy of the source layer (no, it does not do inplace edits).\n'
+        'This algorithm is based on <i>"Remove Self-Overlapping Poritions by Condition"</i> algorithm, and therefore acts the same way if source and overlay layer are identical. '
+        'The difference in that case is build on the already during processing modified source layer. '
+        'But other than <i>Remove Self-Overlapping Portions by Condition</i> it also allows to remove overlapping/intersecting/... portions between two different layers. '
+        'Overall you are free to choose which geometric predicate must be fullfilled, but expect some weird results if you do not choose wisely.\n'
+        'If you use the optional attribute condition, the difference is only done if the condition between the <i>intersecting</i> features is met.\n'
+        'You can choose the iteration order and therefore which feature should keep the <i>intersecting</i> parts. This is especially (or maybe only?) useful if source and overlay input are the same layer.\n'
         )
