@@ -28,6 +28,7 @@ The algorithms are:
 - (New in v1.4) **Create Polygon From Extent**: Takes an extent as input and an optional CRS and creates a new polygon layer from it with some basic attributes.
 - (New in v1.4) **Randomly Redistribute Features Inside Polygon**: Takes a point, line or polygon layer as input and redistributes its features randomly, by using translate and rotate, inside a polygon the feature is within.
 - (New in v1.5) **Translate Duplicate Features to Columns**: Translates features (rows) to columns by an duplicate-identifier, which can be an expression, geometry or a field.
+- (New in v1.5) **Create Perpendicular Lines from Nearest Points by Condition**: Creates perpendicular lines on a line layer based on nearest points by an optional attribute condition.
 
 ### Vector - Interpolation
 - (New in v1.3) **Interpolate DateTime Along Line**: Segmentizes a line by a given distance and interpolates Start- and End-DateTime for these segments. This algorithm is designed for animating lines with Temporal Controller.

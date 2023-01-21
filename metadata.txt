@@ -27,6 +27,7 @@ changelog=
 	- Count Nearest Features by Category
 	- Remove Self-Overlapping Portions by Condition
 	- Conditional Difference
+	- Create Perpendicular Lines from Nearest Points by Condition
 	Improvements:
 	- Removed unused operator import from CountFeaturesInFeaturesByCategory
 	- Removed unused spatial index from RandomlyRedistributeFeaturesInsidePolygon

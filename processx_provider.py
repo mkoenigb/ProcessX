@@ -54,6 +54,7 @@ from .algorithms.vector_creation.NearestPointsToPath import *
 from .algorithms.vector_creation.CreatePolygonFromExtent import *
 from .algorithms.vector_creation.RandomlyRedistributeFeaturesInsidePolygon import *
 from .algorithms.vector_creation.TranslateDuplicateFeaturesToColumns import *
+from .algorithms.vector_creation.CreatePerpendicularLinesFromNearestPointsByCondition import *
 # Vector - Interpolation
 from .algorithms.vector_interpolation.InterpolateDateTimeAlongLine import *
 # OpenTripPlanner
@@ -101,6 +102,7 @@ class ProcessXProvider(QgsProcessingProvider):
         self.addAlgorithm(CreatePolygonFromExtent())
         self.addAlgorithm(RandomlyRedistributeFeaturesInsidePolygon())
         self.addAlgorithm(TranslateDuplicateFeaturesToColumns())
+        self.addAlgorithm(CreatePerpendicularLinesFromNearestPointsByCondition())
         # Vector - Interpolation
         self.addAlgorithm(InterpolateDateTimeAlongLine())
         # OpenTripPlanner
