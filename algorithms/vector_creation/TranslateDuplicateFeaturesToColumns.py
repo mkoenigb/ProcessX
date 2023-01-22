@@ -226,15 +226,6 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
                 new_feat[dict_fieldname + '_' + str(0)] = str(duplicate_attrs)
             
             duplicate_feature_ids = duplicate_dict[source_feat.id()]
-            """
-            match_expression = QgsExpression(f"{duplicate_expression.expression()} = '{duplicate_expression_result}'")
-            for duplicate_feat in source_layer.getFeatures(QgsFeatureRequest(match_expression)):
-            """
-            """ # I think it should be faster here to request the features one by one because many will be skipped
-            duplicate_request = QgsFeatureRequest()
-            duplicate_request.setSubsetOfAttributes(fields_to_translate, source_layer.fields())
-            duplicate_request.setFilterFids(duplicate_feature_ids)
-            """
             duplicate_cnt = 0
             for duplicate_feat_id in duplicate_feature_ids:
                 if feedback.isCanceled():
