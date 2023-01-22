@@ -17,12 +17,14 @@ import processing, random
 from PyQt5.QtCore import QCoreApplication, QVariant
 from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
-                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterField, QgsProcessingParameterExpression)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, 
+                       QgsProcessingParameterEnum, QgsProcessingParameterField, QgsProcessingParameterExpression, QgsProcessingParameterBoolean)
 
 class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
     SOURCE_LYR_ORDERBY = 'SOURCE_LYR_ORDERBY'
     DUPLICATE_EXPRESSION = 'DUPLICATE_EXPRESSION'
+    DUPLICATE_METHOD = 'DUPLICATE_METHOD'
     PRESERVE_GEOMETRY = 'PRESERVE GEOMETRY'
     OUTPUT_STRUCTURE = 'OUTPUT_STRUCTURE'
     FIELDS_TO_TRANSLATE = 'FIELDS_TO_TRANSLATE'
@@ -37,7 +39,14 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
                 self.SOURCE_LYR_ORDERBY, self.tr('OrderBy-Expression for Source-Layer (if left empty the FIDs are used)'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.DUPLICATE_EXPRESSION, self.tr('Expression or Field to identify duplicate Features'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 'geom_to_wkt($geometry)', optional = False))
+                self.DUPLICATE_EXPRESSION, self.tr('Expression or Field to identify duplicate Features'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
+        self.addParameter(
+            QgsProcessingParameterEnum(
+                self.DUPLICATE_METHOD, self.tr('Duplicate Identifier'), ['Use only an expression or field',
+                                                                         'Use only geometry',
+                                                                         'Use expression/field or geometry',
+                                                                         'Use expression/field and geometry'],
+                                                                        defaultValue = 1, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.PRESERVE_GEOMETRY, self.tr('Preserve Geometry'), ['Keep first geometry of order-by expression',
@@ -66,44 +75,94 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
         
         duplicate_expression = self.parameterAsExpression(parameters, self.DUPLICATE_EXPRESSION, context)
         duplicate_expression = QgsExpression(duplicate_expression)
+        duplicate_method = self.parameterAsInt(parameters, self.DUPLICATE_METHOD, context)
+        
         preserve_geometry = self.parameterAsInt(parameters, self.PRESERVE_GEOMETRY, context)
         output_structure = self.parameterAsInt(parameters, self.OUTPUT_STRUCTURE, context)
         fields_to_translate = self.parameterAsFields(parameters, self.FIELDS_TO_TRANSLATE, context)
         
-        total = 100.0 / (source_layer.featureCount() * 2) if source_layer.featureCount() else 0
+        if duplicate_method in (0,2,3):
+            if duplicate_expression in (QgsExpression(''),QgsExpression(None)):
+                feedback.pushWarning('You chose to use an expression/field but did not enter a value for this!')
+        
+        total = 100.0 / (source_layer.featureCount()*2) if source_layer.featureCount() else 0
         current = 0
         
         if not fields_to_translate:
             fields_to_translate = source_layer.fields().names()
-            
-        feedback.setProgressText('Evaluating expressions...')
-        source_layer_dict = {}
+        
+        source_orderby_request = QgsFeatureRequest()
+        if source_orderby_expression not in (QgsExpression(''),QgsExpression(None)):
+            order_by = QgsFeatureRequest.OrderBy([QgsFeatureRequest.OrderByClause(source_orderby_expression)])
+            source_orderby_request.setOrderBy(order_by)
+                
+        source_layer_attr_dict = {}
         source_layer_expression_context = QgsExpressionContext()
         source_layer_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
-        for source_feat in source_layer.getFeatures(): # setting subset to nogeometry would speed up things but would make expressions using geometry not possible..
+        duplicate_geom_dict = {}
+        if duplicate_method in (1,2,3):
+            feedback.setProgressText('Building spatial index...')
+            source_layer_idx = QgsSpatialIndex(source_layer.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        feedback.setProgressText('Evaluating geometries/expressions...')
+        for source_feat in source_layer.getFeatures(source_orderby_request):
             current += 1
             if feedback.isCanceled():
                 break
-            source_layer_expression_context.setFeature(source_feat)
-            source_layer_expression_result = duplicate_expression.evaluate(source_layer_expression_context)
-            source_layer_dict[source_feat.id()] = source_layer_expression_result 
+            if duplicate_method in (0,2,3):
+                source_layer_expression_context.setFeature(source_feat)
+                source_layer_expression_result = duplicate_expression.evaluate(source_layer_expression_context)
+                source_layer_attr_dict[source_feat.id()] = source_layer_expression_result 
+            if duplicate_method in (1,2,3):
+                duplicate_geom_dict[source_feat.id()] = []
+                bbox_intersecting = source_layer_idx.intersects(source_feat.geometry().boundingBox())
+                try:
+                    bbox_intersecting.remove(source_feat.id())
+                except:
+                    pass
+                source_feat_geometryengine = QgsGeometry.createGeometryEngine(source_feat.geometry().constGet())
+                source_feat_geometryengine.prepareGeometry()
+                for overlay_feat_id in bbox_intersecting:
+                    overlay_feat_geom = source_layer_idx.geometry(overlay_feat_id).constGet()
+                    if source_feat_geometryengine.isEqual(overlay_feat_geom):
+                        duplicate_geom_dict[source_feat.id()].append(overlay_feat_id)
             feedback.setProgress(int(current * total))
+                
+        feedback.setProgressText('Setting up output structure...')
+        duplicate_attr_dict = {}
+        if duplicate_method in (0,2,3):
+            for source_feat_id, value in source_layer_attr_dict.items():
+                duplicate_attr_dict[source_feat_id] = [id for id, val in source_layer_attr_dict.items() if val == value]
+                try:
+                    duplicate_attr_dict[source_feat_id].remove(source_feat_id)
+                except:
+                    pass
         
         duplicate_dict = {}
-        for source_feat_id, duplicate_value in source_layer_dict.items():
-            try:
-                duplicate_dict[duplicate_value].append(source_feat_id)
-            except:
-                duplicate_dict[duplicate_value] = [source_feat_id]
-        # {'val1': [fid1, fid2], 'val2': [fid3], 'val3': [fid4]}
-        
-        feedback.setProgressText('Setting up output structure...')
+        if duplicate_method in (2,3):
+            # merge attr and geom dict: https://stackoverflow.com/a/59279514/8947209
+            duplicate_dict = {k: list(d[k] for d in (duplicate_attr_dict, duplicate_geom_dict) if k in d) for k in set(duplicate_attr_dict.keys()) | set(duplicate_geom_dict.keys())}
+            if duplicate_method == 2: # attr or geom duplicate
+                # combine lists to one list and remove duplicates
+                for k, v in duplicate_dict.items():
+                    duplicate_dict[k] = list(set([item for sublist in v for item in sublist]))
+            elif duplicate_method == 3: # attr and geom duplicate
+                # combine lists to one list only if fid is in all sublists and remove duplicates
+                for k, v in duplicate_dict.items():
+                    duplicate_dict[k] = list(set.intersection(*[set(sublist) for sublist in v]))
+        elif duplicate_method == 0:
+            duplicate_dict = duplicate_attr_dict
+        elif duplicate_method == 1:
+            duplicate_dict = duplicate_geom_dict
+        else:
+            feedback.reportError('Undefined duplicate method!', fatalError = True)
         
         try:
-            max_duplicates = max(duplicate_dict.values(), key=len)
-            max_duplicate_fields = len(max_duplicates)
+            max_duplicate_fields = len(max(duplicate_dict.values(), key=len)) +1
         except:
             max_duplicate_fields = 0
+        
+        if max_duplicate_fields == 0:
+            feedback.pushWarning('Could not find any duplicates!')
             
         output_layer_fields = QgsFields()
         for source_layer_field in source_layer.fields():
@@ -137,11 +196,6 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
                                                output_layer_fields, output_layer_wkbtype,
                                                source_layer.sourceCrs())
         
-        source_orderby_request = QgsFeatureRequest()
-        if source_orderby_expression not in (QgsExpression(''),QgsExpression(None)):
-            order_by = QgsFeatureRequest.OrderBy([QgsFeatureRequest.OrderByClause(source_orderby_expression)])
-            source_orderby_request.setOrderBy(order_by)
-        
         feedback.setProgressText('Start processing...')
         duplicate_expression_context = QgsExpressionContext()
         duplicate_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
@@ -157,7 +211,7 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
             new_feat = QgsFeature(output_layer_fields)
             new_feat_geom = QgsGeometry()
             duplicate_geoms = [source_feat.geometry()]
-            duplicate_attr_dict = {}
+            duplicate_attrs = {}
             
             for source_feat_field in source_feat.fields():
                 if source_feat_field.name() not in fields_to_translate:
@@ -168,13 +222,10 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
                     new_feat[field_name + '_' + str(0)] = source_feat.attribute(field_name)
             if output_structure == 1: # Create one dictionary
                 for field_name in fields_to_translate:
-                    duplicate_attr_dict[field_name] = source_feat.attribute(field_name)
-                new_feat[dict_fieldname + '_' + str(0)] = str(duplicate_attr_dict)
+                    duplicate_attrs[field_name] = source_feat.attribute(field_name)
+                new_feat[dict_fieldname + '_' + str(0)] = str(duplicate_attrs)
             
-            duplicate_expression_context.setFeature(source_feat)
-            duplicate_expression_result = duplicate_expression.evaluate(duplicate_expression_context)
-            
-            duplicate_feature_ids = duplicate_dict[duplicate_expression_result]
+            duplicate_feature_ids = duplicate_dict[source_feat.id()]
             """
             match_expression = QgsExpression(f"{duplicate_expression.expression()} = '{duplicate_expression_result}'")
             for duplicate_feat in source_layer.getFeatures(QgsFeatureRequest(match_expression)):
@@ -199,17 +250,17 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
                 duplicate_request.setFilterFid(duplicate_feat_id)
                 duplicate_feat = next(source_layer.getFeatures(duplicate_request))
                 
-                duplicate_attr_dict = {}
+                duplicate_attrs = {}
                 if output_structure == 0: # Create a field
                     for field_name in fields_to_translate:
                         new_feat[field_name + '_' + str(duplicate_cnt)] = duplicate_feat.attribute(field_name)
                 if output_structure == 1: # Create one dictionary
                     for field_name in fields_to_translate:
-                        duplicate_attr_dict[field_name] = duplicate_feat.attribute(field_name)
-                    new_feat[dict_fieldname + '_' + str(duplicate_cnt)] = str(duplicate_attr_dict)
+                        duplicate_attrs[field_name] = duplicate_feat.attribute(field_name)
+                    new_feat[dict_fieldname + '_' + str(duplicate_cnt)] = str(duplicate_attrs)
                 duplicate_geoms.append(duplicate_feat.geometry())
                 
-                if len(str(duplicate_attr_dict)) > 1000:
+                if len(str(duplicate_attrs)) > 1000:
                     maxstrlengthexceeded = True
                     
                 skip_feats.append(duplicate_feat_id)
@@ -221,8 +272,8 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
                 new_feat_geom = random.choice(duplicate_geoms)
             elif preserve_geometry == 2: # Merge geometries of all duplicates to one multipart geometry
                 new_feat_geom = QgsGeometry().unaryUnion(duplicate_geoms)
-                
             new_feat.setGeometry(new_feat_geom)
+            
             sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
         
         if output_structure == 1:
@@ -252,7 +303,7 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-            'This algorithm translates features (rows) to columns by an duplicate-identifier, which can be an expression or a field. If you want the geometry as duplicate-identifier, make sure to convert the geometry to wkt via <i>geom_to_wkt($geometry)</i>\n'
+            'This algorithm translates features (rows) to columns by an duplicate-identifier, which can be an expression, a field or geometry. \n'
             'You can choose which geometry of these duplicates you want to keep; either the first one in order-by expression or feature id, a random one or a unary union multipart geometry.\n'
             'You may also set up the output structure yourself. Duplicated fields ending with a 0 as postfix (original_fieldname_0) contain the information of the first feature. '
             '<b>Create new field for each duplicate feature field</b> creates a copy for each field per duplicate with a number as postfix in its name (original_fieldname_n) containing the attributes of the duplicate. '
