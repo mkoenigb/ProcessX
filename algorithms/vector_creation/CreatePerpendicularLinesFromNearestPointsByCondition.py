@@ -3,7 +3,6 @@
 Author: Mario Königbauer (mkoenigb@gmx.de)
 (C) 2023 - today by Mario Koenigbauer
 License: GNU General Public License v3.0
-
 /***************************************************************************
  *                                                                         *
  *   This program is free software; you can redistribute it and/or modify  *
@@ -303,8 +302,9 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
                     
                 nearest_line_geom = overlay_layer_idx.geometry(nearest_line_id)
                 if source_layer_vl.sourceCrs() != overlay_layer_vl.sourceCrs():
-                    nearest_line_geom.transform(QgsCoordinateTransform(source_layer_crs, overlay_layer_crs, QgsProject.instance()))
+                    nearest_line_geom.transform(QgsCoordinateTransform(source_layer_crs, overlay_layer_crs, context.transformContext()))
                     
+                # WARNING: THIS WILL CRASH QGIS IF A TRANSFORMATION TO EPSG:4326 WAS DONE BEFORE! see: https://gis.stackexchange.com/questions/450122/qgscoordinatetransform-causes-crash-in-processing-script
                 point_on_nearest_line = nearest_line_geom.nearestPoint(source_feat.geometry().centroid())
         
                 sqrDist, minDistPoint, afterVertex, leftOf = nearest_line_geom.closestSegmentWithContext(point_on_nearest_line.asPoint(),1)
