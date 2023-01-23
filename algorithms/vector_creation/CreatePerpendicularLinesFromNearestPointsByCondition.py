@@ -15,13 +15,15 @@ License: GNU General Public License v3.0
 
 import processing, math, operator
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsProject, QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPoint, QgsPointXY, QgsWkbTypes, QgsCoordinateReferenceSystem, QgsCoordinateTransform,
-                       QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
+from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPoint, QgsPointXY, QgsWkbTypes, QgsCoordinateReferenceSystem,
+                       QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition, QgsProcessingParameterVectorLayer,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterFeatureSource, QgsProcessingParameterExpression, QgsProcessingParameterEnum, QgsProcessingParameterBoolean)
 
 class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
+    SOURCE_FILTER_EXPRESSION = 'SOURCE_FILTER_EXPRESSION'
     OVERLAY_LYR = 'OVERLAY_LYR'
+    OVERLAY_FILTER_EXPRESSION = 'OVERLAY_FILTER_EXPRESSION'
     MAX_DIST = 'MAX_DIST'
     MAX_NEIGHBORS = 'MAX_NEIGHBORS'
     LINE_LENGTH = 'LINE_LENGTH'
@@ -38,7 +40,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
 
     def initAlgorithm(self, config=None):
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterVectorLayer(
                 self.SOURCE_LYR, self.tr('Points'), [QgsProcessing.TypeVectorPoint]))
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -47,8 +49,14 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             QgsProcessingParameterBoolean(
                 self.FIRST_MATCH_ONLY, self.tr('Create perpendicular lines only for first match'), defaultValue = False))
         self.addParameter(
-            QgsProcessingParameterFeatureSource(
+            QgsProcessingParameterExpression(
+                self.SOURCE_FILTER_EXPRESSION, self.tr('Filter-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
+        self.addParameter(
+            QgsProcessingParameterVectorLayer(
                 self.OVERLAY_LYR, self.tr('Lines'), [QgsProcessing.TypeVectorLine]))
+        self.addParameter(
+            QgsProcessingParameterExpression(
+                self.OVERLAY_FILTER_EXPRESSION, self.tr('Filter-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.MAX_DIST, self.tr('Maximum distance between points and line \n(must evaluate to float or int; 0 or negative number means unlimited)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0))
@@ -85,9 +93,9 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
 
     def processAlgorithm(self, parameters, context, feedback):
         feedback.setProgressText('Prepare processing...')
-        source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context)
+        #source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context) # Cant use Feature Source due to a bug when reprojecting; see: https://gis.stackexchange.com/questions/450122/qgscoordinatetransform-causes-crash-in-processing-script
         source_layer_vl = self.parameterAsLayer(parameters, self.SOURCE_LYR, context)
-        overlay_layer = self.parameterAsSource(parameters, self.OVERLAY_LYR, context)
+        #overlay_layer = self.parameterAsSource(parameters, self.OVERLAY_LYR, context)
         overlay_layer_vl = self.parameterAsLayer(parameters, self.OVERLAY_LYR, context)
         max_dist = self.parameterAsExpression(parameters, self.MAX_DIST, context)
         max_dist_expression = QgsExpression(max_dist)
@@ -99,6 +107,11 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
         source_orderby_expression = self.parameterAsExpression(parameters, self.SOURCE_LYR_ORDERBY, context)
         source_orderby_expression = QgsExpression(source_orderby_expression)
         first_match_only = self.parameterAsBool(parameters, self.FIRST_MATCH_ONLY, context)
+        
+        source_filter_expression = self.parameterAsExpression(parameters, self.SOURCE_FILTER_EXPRESSION, context)
+        source_filter_expression = QgsExpression(source_filter_expression)
+        overlay_filter_expression = self.parameterAsExpression(parameters, self.OVERLAY_FILTER_EXPRESSION, context)
+        overlay_filter_expression = QgsExpression(overlay_filter_expression)
         
         source_compare_expression = self.parameterAsExpression(parameters, self.SOURCE_COMPARE_EXPRESSION, context)
         source_compare_expression = QgsExpression(source_compare_expression)
@@ -152,6 +165,15 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             overlay_compare_expression2 = QgsExpression('') # Ignore eventually set fields/expressions!
             source_compare_expression2 = QgsExpression('') # Ignore eventually set fields/expressions!
             comparisons = True
+            
+        # QgsGeometry.nearestPoint() does return incorrect results when not using a projected CRS.
+        if source_layer_vl.crs().isGeographic():
+            feedback.reportError('WARNING: Your Pointlayer is in a geographic CRS. It must be in a projected CRS, otherwise the result will be incorrect! Reproject your input and try again.')
+            
+        if source_filter_expression not in (QgsExpression(''),QgsExpression(None)):
+            source_layer_vl = source_layer_vl.materialize(QgsFeatureRequest(source_filter_expression))
+        if overlay_filter_expression not in (QgsExpression(''),QgsExpression(None)):
+            overlay_layer_vl = overlay_layer_vl.materialize(QgsFeatureRequest(overlay_filter_expression))
         
         field_name_dict = {
                 'cross_line_feature_id_fieldname': 'cross_line_feature_id',
@@ -161,7 +183,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
                 'distance_point_to_nearest_line_fieldname': 'distance_point_to_nearest_line'
             }
         
-        output_layer_fields = source_layer.fields()
+        output_layer_fields = source_layer_vl.fields()
         whilecounter = 0
         while any(elem in field_name_dict.values() for elem in output_layer_fields.names()):
             whilecounter += 1
@@ -178,10 +200,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
         
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
                                                output_layer_fields, 2, # LineString = 2
-                                               source_layer.sourceCrs())
-                
-        source_layer_crs = QgsCoordinateReferenceSystem(source_layer_vl.crs().authid())
-        overlay_layer_crs = QgsCoordinateReferenceSystem(overlay_layer_vl.crs().authid())
+                                               source_layer_vl.sourceCrs())
         
         if comparisons:
             if source_layer_vl.featureCount() + overlay_layer_vl.featureCount() > 0:
@@ -192,6 +211,12 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             total = 100.0 / source_layer_vl.featureCount() if source_layer_vl.featureCount() else 0
         current = 0
         
+        if source_layer_vl.sourceCrs() != overlay_layer_vl.sourceCrs():
+            feedback.setProgressText('Reprojecting Overlay Layer...')
+            reproject_params = {'INPUT': overlay_layer_vl, 'TARGET_CRS': source_layer_vl.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}
+            reproject_result = processing.run('native:reprojectlayer', reproject_params)
+            overlay_layer_vl = reproject_result['OUTPUT']
+            
         if comparisons: # dictonaries are a lot faster than featurerequests; https://gis.stackexchange.com/q/434768/107424
             feedback.setProgressText('Evaluating expressions...')
             overlay_layer_dict = {}
@@ -213,7 +238,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
                 feedback.setProgress(int(current * total))
         
         feedback.setProgressText('Building spatial index...')
-        overlay_layer_idx = QgsSpatialIndex(overlay_layer.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
         
         source_orderby_request = QgsFeatureRequest()
         if source_orderby_expression not in (QgsExpression(''),QgsExpression(None)):
@@ -233,7 +258,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
             source_compare_expression_context2 = QgsExpressionContext()
             source_compare_expression_context2.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
-        for source_feat in source_layer.getFeatures(source_orderby_request):
+        for source_feat in source_layer_vl.getFeatures(source_orderby_request):
             if feedback.isCanceled():
                 break
             current += 1
@@ -301,21 +326,17 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
                     overlay_skip.append(nearest_line_id)
                     
                 nearest_line_geom = overlay_layer_idx.geometry(nearest_line_id)
-                if source_layer_vl.sourceCrs() != overlay_layer_vl.sourceCrs():
-                    nearest_line_geom.transform(QgsCoordinateTransform(source_layer_crs, overlay_layer_crs, context.transformContext()))
-                    
-                # WARNING: THIS WILL CRASH QGIS IF A TRANSFORMATION TO EPSG:4326 WAS DONE BEFORE! see: https://gis.stackexchange.com/questions/450122/qgscoordinatetransform-causes-crash-in-processing-script
                 point_on_nearest_line = nearest_line_geom.nearestPoint(source_feat.geometry().centroid())
-        
-                sqrDist, minDistPoint, afterVertex, leftOf = nearest_line_geom.closestSegmentWithContext(point_on_nearest_line.asPoint(),1)
+                
+                sqrDist, minDistPoint, afterVertex, leftOf = nearest_line_geom.closestSegmentWithContext(point_on_nearest_line.asPoint())
                 vertexOnSegment2 = nearest_line_geom.vertexAt(afterVertex)
                 vertexOnSegment1 = nearest_line_geom.vertexAt(afterVertex - 1)
                 segmentAngle = math.atan2(vertexOnSegment2.x() - vertexOnSegment1.x(), vertexOnSegment2.y() - vertexOnSegment1.y())
                 segmentAngleDegree = math.degrees(segmentAngle) if segmentAngle > 0 else math.degrees(segmentAngle) + 180
                 segmentgeom = QgsGeometry.fromPolyline([vertexOnSegment1,vertexOnSegment2])
-                perpendicularLinePoint1 = point_on_nearest_line.asPoint().project(line_length_expression_result,segmentAngleDegree+90)
-                perpendicularLinePoint2 = point_on_nearest_line.asPoint().project(line_length_expression_result,segmentAngleDegree-90)
-                perpendicularLineGeom = QgsGeometry.fromPolylineXY([perpendicularLinePoint1,perpendicularLinePoint2])
+                perpendicularLinePoint1 = QgsPoint(point_on_nearest_line.asPoint().project(line_length_expression_result,segmentAngleDegree+90))
+                perpendicularLinePoint2 = QgsPoint(point_on_nearest_line.asPoint().project(line_length_expression_result,segmentAngleDegree-90))
+                perpendicularLineGeom = QgsGeometry.fromPolyline([perpendicularLinePoint1,perpendicularLinePoint2])
                 
                 new_feat = QgsFeature(output_layer_fields)
                 attridx = 0
@@ -357,7 +378,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
     def shortHelpString(self):
         return self.tr(
         'This algorithm takes points as source input and creates perpendicular lines on the nearest line by an optional attribute condition. The perpendicular line will be located on the nearest segment and intersect the line layer on the nearest point to the input points.\n '
-        'If the input point layer is of type multipoint, the centroids are taken.\n'
+        'If the input point layer is of type multipoint, the centroids are taken. <b>The point layer must be in a projected CRS, otherwise the result will be incorrect!</b> See PyQGIS documentation for more informations.\n'
         'You can also choose the iteration order of the points and set whether a perpendicular line shall only be created on the first match.\n'
         'As maximum distance, maximum neighbors and line length you may choose an expression or field based on the points layer, so you can set these individually for each point. '
         'If the expression evaluates to an invalid result, the feature will be skipped and no perpendicular line is created.\n'
