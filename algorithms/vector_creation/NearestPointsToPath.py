@@ -16,7 +16,7 @@ License: GNU General Public License v3.0
 
 import processing
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsSpatialIndexKDBush, QgsGeometry, QgsPoint, QgsPointXY, QgsWkbTypes,
+from qgis.core import (QgsField, QgsFields, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsSpatialIndexKDBush, QgsGeometry, QgsPoint, QgsPointXY, QgsWkbTypes, 
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
                        QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
@@ -115,7 +115,7 @@ class NearestPointsToPath(QgsProcessingAlgorithm):
             output_layer_fields.append(QgsField('path_dists', QVariant.String))
             
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               output_layer_fields, 2, # LineString = 2
+                                               output_layer_fields, QgsWkbTypes.LineString, # LineString = 2
                                                source_layer.sourceCrs())
             
         if source_filter_expression not in (QgsExpression(''),QgsExpression(None)):
