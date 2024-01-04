@@ -16,11 +16,11 @@ License: GNU General Public License v3.0
 
 import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPointXY, QgsWkbTypes,
+from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPointXY, QgsWkbTypes, 
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
                        QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
-class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
+class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
     SOURCE_LYR_ORDERBY = 'SOURCE_LYR_ORDERBY'
     SOURCE_FILTER_EXPRESSION = 'SOURCE_FILTER_EXPRESSION'
@@ -36,6 +36,7 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
     METHOD = 'METHOD'
     MAX_DIST = 'MAX_DIST'
     AVOID_DUPLICATE_NODES = 'AVOID_DUPLICATE_NODES'
+    DROP_LENGTH = 'DROP_LENGTH'
     OUTPUT = 'OUTPUT'
     
 
@@ -57,15 +58,26 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
                 self.POINTS_FILTER_EXPRESSION, self.tr('Filter-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterEnum(
-                self.METHOD, self.tr('Method'), ['Use nearest Points as new Vertices (Modifies line paths)',
-                                                 'Use interpolated Points on existing Line, closest to nearest Points, as new Vertices (Line paths remain unchanged)'
+                self.METHOD, self.tr('Method'), ['Modifiy line paths by using the nearest points themselves as split points and new vertices',
+                                                 'Use interpolated points on existing line, closest to nearest points, as split points and new vertices (line paths remain unchanged)'
                                                 ], defaultValue = 1, allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterBoolean(
-                self.AVOID_DUPLICATE_NODES, self.tr('Avoid duplicate Nodes'), defaultValue = 1))
+                self.AVOID_DUPLICATE_NODES, self.tr('Avoid duplicate nodes, empty, null or invalid geometries'), defaultValue = 1))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.MAX_DIST, self.tr('Maximum distance (must evaluate to float; 0 or negative means unlimited)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0, optional = False))
+                self.DROP_LENGTH, self.tr('Drop lines equal or shorter than X (must evaluate to float; neagtive means keep all)'), defaultValue = 0.000000001, parentLayerParameterName = 'SOURCE_LYR', optional = False))
+                
+        self.addParameter(
+            QgsProcessingParameterExpression(
+                self.MAX_DIST, self.tr('Maximum distance to split points (must evaluate to float; 0 or negative means unlimited)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0, optional = False))
+        
+        
+        #parameter_source_compare_expression = QgsProcessingParameterExpression(
+        #        self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        #parameter_source_compare_expression.setFlags(parameter_source_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        #self.addParameter(parameter_source_compare_expression)
+        
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
@@ -89,7 +101,7 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
                 self.POINTS_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
-                self.OUTPUT, self.tr('Densified Lines')))
+                self.OUTPUT, self.tr('Splitted Lines')))
 
     def processAlgorithm(self, parameters, context, feedback):
         feedback.setProgressText('Prepare processing...')
@@ -102,6 +114,8 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
         max_dist_expression = self.parameterAsExpression(parameters, self.MAX_DIST, context)
         max_dist_expression = QgsExpression(max_dist_expression)
         avoid_duplicate_nodes = self.parameterAsBool(parameters, self.AVOID_DUPLICATE_NODES, context)
+        drop_length_expression = self.parameterAsExpression(parameters, self.DROP_LENGTH, context)
+        drop_length_expression = QgsExpression(drop_length_expression)
         
         source_orderby_expression = self.parameterAsExpression(parameters, self.SOURCE_LYR_ORDERBY, context)
         source_orderby_expression = QgsExpression(source_orderby_expression)
@@ -229,6 +243,8 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
         feedback.setProgressText('Start processing...')
         max_dist_expression_context = QgsExpressionContext()
         max_dist_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
+        drop_length_expression_context = QgsExpressionContext()
+        drop_length_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
         source_compare_expression_context = QgsExpressionContext()
         source_compare_expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes(source_layer_vl))
         source_compare_expression_context2 = QgsExpressionContext()
@@ -238,7 +254,6 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
                 break
             current += 1
             line_geom = line_feat.geometry()
-            new_geom = line_feat.geometry()
             vertices_dict = {}
             if comparisons:
                 source_compare_expression_context.setFeature(line_feat)
@@ -246,6 +261,8 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
                 source_compare_expression_context2.setFeature(line_feat)
                 source_compare_expression_result2 = source_compare_expression2.evaluate(source_compare_expression_context2)
             
+            drop_length_expression_context.setFeature(line_feat)
+            drop_length_expression_result = drop_length_expression.evaluate(drop_length_expression_context)
             max_dist_expression_context.setFeature(line_feat)
             max_dist_expression_result = max_dist_expression.evaluate(max_dist_expression_context)
             nearest_point_ids = points_layer_idx.nearestNeighbor(line_geom,-1,max_dist_expression_result)
@@ -269,27 +286,76 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
                     vertices_dict[dist_along_line] = [nearest_point_geom,point_on_line,vertex_after_nr_old,vertex_after_nr_new]
                 except:
                     pass
-                    
+            
+            # densify the geometry with the nearest points, sorted by distance from start
             vertices_dict = dict(sorted(vertices_dict.items()))
+            from_to_list = []
+            densified_geom = line_feat.geometry()
             for i, (k, v) in enumerate(vertices_dict.items()):
                 if feedback.isCanceled():
                     break
                 v[3] += i
                 if method == 0:
-                    new_geom.insertVertex(v[0].vertices().next(),v[3])
+                    densified_geom.insertVertex(v[0].vertices().next(),v[3])
                 else:
-                    new_geom.insertVertex(v[1].vertices().next(),v[3])
-            if avoid_duplicate_nodes:
-                new_geom.removeDuplicateNodes(10,True)
+                    densified_geom.insertVertex(v[1].vertices().next(),v[3])
+                from_to_list.append(v[3])
+                
+            max_vert = densified_geom.constGet().nCoordinates() - 1
+            from_to_list.append(0)
+            from_to_list.append(max_vert)
+            from_to_list.sort()
             
-            new_feat = QgsFeature(output_layer_fields)
-            attridx = 0
-            for attr in line_feat.attributes():
-                new_feat[attridx] = attr
-                attridx += 1
-            new_feat.setGeometry(new_geom)
-            
-            sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
+            # create the new lines from start vertices to their end vertices
+            for from_to_index, from_to_value in enumerate(from_to_list):
+                if feedback.isCanceled():
+                    break
+                if from_to_value == max_vert:
+                    break
+                from_vert = from_to_value
+                try:
+                    to_vert = from_to_list[from_to_index+1]
+                except IndexError:
+                    to_vert = densified_geom.constGet().nCoordinates() - 1
+                # create a deep copy so we can safely modify the geometry
+                new_geom = QgsGeometry(densified_geom.constGet().clone())
+                keep_vert_index = list(range(from_vert,to_vert+1))
+                vertices_deleted = 0
+                del_vert = 0
+                for vert_index in range(0,densified_geom.constGet().nCoordinates()):
+                    if feedback.isCanceled():
+                        break
+                    if vert_index in keep_vert_index:
+                        del_vert += 1
+                        continue
+                    # if the second last vertex of a part gets deleted, two vertices are deleted at the same time
+                    # because there is no response about this, we need to somehow figure out when that happened
+                    del_diff = densified_geom.constGet().nCoordinates() - (new_geom.constGet().nCoordinates() + vertices_deleted)
+                    if del_diff > 0:
+                        vertices_deleted += del_diff
+                        continue
+                    new_geom.deleteVertex(del_vert)
+                    vertices_deleted += 1
+                    
+                if avoid_duplicate_nodes:
+                    new_geom.removeDuplicateNodes(10,True)
+                    if not new_geom.isGeosValid():
+                        continue
+                    if new_geom.isNull() or new_geom.isEmpty():
+                        continue
+                if drop_length_expression_result < 0:
+                    pass
+                elif new_geom.length() <= drop_length_expression_result:
+                    continue
+                
+                new_feat = QgsFeature(output_layer_fields)
+                attridx = 0
+                for attr in line_feat.attributes():
+                    new_feat[attridx] = attr
+                    attridx += 1
+                new_feat.setGeometry(new_geom)
+                sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
+                
             feedback.setProgress(int(current * total))
             
         return {self.OUTPUT: dest_id}
@@ -299,13 +365,13 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
         return QCoreApplication.translate('Processing', string)
 
     def createInstance(self):
-        return DensifyLinesWithNearestPointsByCondition()
+        return SplitLinesAtNearestPointsByCondition()
 
     def name(self):
-        return 'DensifyLinesWithNearestPointsByCondition'
+        return 'SplitLinesAtNearestPointsByCondition'
 
     def displayName(self):
-        return self.tr('Densify Lines With Nearest Points By Condition')
+        return self.tr('Split Lines At Nearest Points By Condition')
 
     def group(self):
         return self.tr(self.groupId())
@@ -315,10 +381,10 @@ class DensifyLinesWithNearestPointsByCondition(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm inserts new vertices to a given line layer. The new vertices are based on a given point layer. The point layer is casted to a singlepoint layer first, which means that the geometry of its nodes are used.'
-        ' <b>Note that this algorithm may produce unexpected or weird results when input lines are not in a projected CRS!</b>'
-        '\nYou can either choose to use the nearest points as new vertices, which will modify the lines path or use interpolated points on the existing line, which are closest to the nearest points as new vertices.'
-        '\nIf two or more nearest points, when snapped on to the lines, are at the exact same distance along the line from its start, only one point is taken.'
-        '\nYou can also choose an optional attribute condition to choose wheter a point shall be used or not.'
+        'This algorithm splits lines by nearest points if an optional attribute condition is met. It takes linestrings, multilinestrings as well as z and m values into account. '
+        '<b>Note that this algorithm may produce unexpected or weird results when input lines are not in a projected CRS!</b> '
+        'Also this algorithm may produce lines of length 0 (or rather 0.0000...1), if the only remaining start-vertex and end-vertex are at the same position. You can drop these by using the corresponding option or keep them by setting this option to -1.'
+        '\nYou can either choose to modify the lines path by moving the vertices to their split-points or use interpolated points on the existing line, which are closest to the nearest points, as split points.'
+        '\nIf two or more nearest points, when snapped on to the lines, are at the exact same distance along the line from its start, only one point is taken as split-point.'
         '\nIf the algorithm does not find any matching points, the lines remain unchanged.'
         )
