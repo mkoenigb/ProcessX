@@ -24,6 +24,7 @@ changelog=
     v1.6
       Added algorithms:
       - Densify Lines With Nearest Points By Condition
+	  - Split Lines At Nearest Points By Condition
       Improvements:
       - fixed 5th parameter of Nearest Points to Path to QgsWkbType (due to a change in QGIS v3.30)
     v1.5
