@@ -66,7 +66,7 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
                 self.AVOID_DUPLICATE_NODES, self.tr('Avoid duplicate nodes, empty, null or invalid geometries'), defaultValue = 1))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.DROP_LENGTH, self.tr('Drop lines equal or shorter than X (must evaluate to float; neagtive means keep all)'), defaultValue = 0.000000001, parentLayerParameterName = 'SOURCE_LYR', optional = False))
+                self.DROP_LENGTH, self.tr('Drop lines or line parts equal or shorter than X (must evaluate to float; neagtive means keep all)'), defaultValue = 0.0, parentLayerParameterName = 'SOURCE_LYR', optional = False))
                 
         self.addParameter(
             QgsProcessingParameterExpression(
@@ -332,21 +332,41 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
                     # because there is no response about this, we need to somehow figure out when that happened
                     del_diff = densified_geom.constGet().nCoordinates() - (new_geom.constGet().nCoordinates() + vertices_deleted)
                     if del_diff > 0:
-                        vertices_deleted += del_diff
+                        vertices_deleted += 1
                         continue
                     new_geom.deleteVertex(del_vert)
                     vertices_deleted += 1
                     
-                if avoid_duplicate_nodes:
-                    new_geom.removeDuplicateNodes(10,True)
-                    if not new_geom.isGeosValid():
-                        continue
-                    if new_geom.isNull() or new_geom.isEmpty():
-                        continue
                 if drop_length_expression_result < 0:
                     pass
-                elif new_geom.length() <= drop_length_expression_result:
-                    continue
+                else:
+                    for k, part in enumerate(new_geom.parts()):
+                        if part is None:
+                            break # otherwise this loop will run infinite
+                        if feedback.isCanceled():
+                            break
+                        if part.length() <= drop_length_expression_result:
+                            new_geom.deletePart(k)
+                            #feedback.reportError('Deleting Part {} between Vertices {} and {} of Feature {}.'.format(k, from_to_index, from_to_value, line_feat.id()), fatalError = False)
+                    if new_geom.length() <= drop_length_expression_result:
+                        #feedback.reportError('Dropping line between Vertices {} and {} of Feature {} due to its length.'.format(k, from_to_index, from_to_value, line_feat.id()), fatalError = False)
+                        continue
+                    
+                if avoid_duplicate_nodes:
+                    new_geom.removeDuplicateNodes(4,True)
+                    if not new_geom.isGeosValid():
+                        try:
+                            new_geom = new_geom.makeValid()
+                        except:
+                            #feedback.reportError('Could not make LinePart between Vertices {} and {} of Feature {} valid; Skipping.'.format(from_to_index, from_to_value, line_feat.id()), fatalError = False)
+                            continue
+                        if not new_geom.isGeosValid():
+                            #feedback.reportError('LinePart between Vertices {} and {} of Feature {} is not valid; Skipping.'.format(from_to_index, from_to_value, line_feat.id()), fatalError = False)
+                            continue
+                    if new_geom.isNull() or new_geom.isEmpty():
+                        #feedback.reportError('LinePart between Vertices {} and {} of Feature {} is empty or null; Skipping.'.format(from_to_index, from_to_value, line_feat.id()), fatalError = False)
+                        continue
+
                 
                 new_feat = QgsFeature(output_layer_fields)
                 attridx = 0
