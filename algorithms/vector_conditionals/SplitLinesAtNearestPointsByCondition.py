@@ -353,7 +353,7 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
                         continue
                     
                 if avoid_duplicate_nodes:
-                    new_geom.removeDuplicateNodes(4,True)
+                    new_geom.removeDuplicateNodes(10,True)
                     if not new_geom.isGeosValid():
                         try:
                             new_geom = new_geom.makeValid()
