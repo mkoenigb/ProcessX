@@ -10,7 +10,7 @@ version=1.6
 author=Mario Koenigbauer
 email=mkoenigb@gmx.de
 
-about=This Plug-In provides a collection of various processing algorithms for QGIS. For example "Join Attributes by Nearest with Condition", "Create Nested Grid", "Nearest Points To Path", "Conditional Intersection", "Remove Self-Overlapping Portions", "Translate Duplicate Features to Columns", "Count Nearest Features by Category", etc. See Changelog or Readme for a complete list and more details
+about=This Plug-In provides a collection of various processing algorithms for QGIS. For example "Split Lines at Nearest Points by Condition", "Join Attributes by Nearest with Condition", "Create Nested Grid", "Nearest Points To Path", "Conditional Intersection", "Remove Self-Overlapping Portions", "Translate Duplicate Features to Columns", "Count Nearest Features by Category", etc. See Changelog or Readme for a complete list and more details.
 
 tracker=https://github.com/mkoenigb/ProcessX/issues
 repository=https://github.com/mkoenigb/ProcessX
@@ -24,7 +24,7 @@ changelog=
     v1.6
       Added algorithms:
       - Densify Lines With Nearest Points By Condition
-	  - Split Lines At Nearest Points By Condition
+      - Split Lines At Nearest Points By Condition
       Improvements:
       - fixed 5th parameter of Nearest Points to Path to QgsWkbType (due to a change in QGIS v3.30)
     v1.5
