@@ -340,14 +340,17 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
                 if drop_length_expression_result < 0:
                     pass
                 else:
+                    remove_parts = []
                     for k, part in enumerate(new_geom.parts()):
-                        if part is None:
-                            break # otherwise this loop will run infinite
                         if feedback.isCanceled():
                             break
                         if part.length() <= drop_length_expression_result:
-                            new_geom.deletePart(k)
-                            #feedback.reportError('Deleting Part {} between Vertices {} and {} of Feature {}.'.format(k, from_to_index, from_to_value, line_feat.id()), fatalError = False)
+                            remove_parts.append(k)
+                    for k in reversed(remove_parts): # must iterate in reverse so we dont mess with part indices while deleting them
+                        if feedback.isCanceled():
+                            break
+                        new_geom.deletePart(k)
+                        #feedback.reportError('Deleting Part {} between Vertices {} and {} of Feature {}.'.format(k, from_to_index, from_to_value, line_feat.id()), fatalError = False)
                     if new_geom.length() <= drop_length_expression_result:
                         #feedback.reportError('Dropping line between Vertices {} and {} of Feature {} due to its length.'.format(k, from_to_index, from_to_value, line_feat.id()), fatalError = False)
                         continue
@@ -401,10 +404,11 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm splits lines by nearest points if an optional attribute condition is met. It takes linestrings, multilinestrings as well as z and m values into account. '
-        '<b>Note that this algorithm may produce unexpected or weird results when input lines are not in a projected CRS!</b> '
-        'Also this algorithm may produce lines of length 0 (or rather 0.0000...1), if the only remaining start-vertex and end-vertex are at the same position. You can drop these by using the corresponding option or keep them by setting this option to -1.'
-        '\nYou can either choose to modify the lines path by moving the vertices to their split-points or use interpolated points on the existing line, which are closest to the nearest points, as split points.'
+        'This algorithm splits lines by nearest points if an optional attribute condition is met. It takes linestrings, multilinestrings as well as z and m values into account. Gaps of multilines are preserved. '
+        '\n<b>Note that this algorithm may produce unexpected or weird results when input lines are not in a projected CRS!</b> '
+        'Also this algorithm may produce lines or line-parts of length 0 (or 0.0000...1), if the only remaining start-vertex and end-vertex are at the same position. '
+        'You can drop these by using the corresponding option or keep them by setting this option to -1. Note that this option measures the planar, 2-dimensional length of parts/geometry.'
+        '\nYou can either choose to modify the lines path by moving the vertices to their split-points or use interpolated points on the existing path, which are closest to the nearest points, as split points.'
         '\nIf two or more nearest points, when snapped on to the lines, are at the exact same distance along the line from its start, only one point is taken as split-point.'
-        '\nIf the algorithm does not find any matching points, the lines remain unchanged.'
+        '\nIf the algorithm does not find any matching split-points, the lines remain unchanged.'
         )
