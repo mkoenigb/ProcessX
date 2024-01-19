@@ -267,7 +267,7 @@ class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
         current = 0
         
         feedback.setProgressText('Building spatial index...')
-        points_layer_idx = QgsSpatialIndex(points_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        points_layer_idx = QgsSpatialIndex(points_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries, feedback=feedback)
         
         if comparisons: # dictonaries are a lot faster than featurerequests; https://gis.stackexchange.com/q/434768/107424
             feedback.setProgressText('Evaluating expressions...')
