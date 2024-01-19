@@ -447,7 +447,7 @@ class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm extends lines and/or line parts to nearest points by using an optional attribute condition. The initial line/part will not be modified.'
+        'This algorithm extends lines and/or line parts to nearest points by using an optional attribute condition. The initial line/part will not be modified. If point input is multitype, the points will be converted to single points. If point input are lines or polygons, the vertices are used.'
         '\nYou can also set the maximum search distance for points or use an option to not extend a line/part if the start/end vertex already is on a nearest point respecitvely the points are closer than X.'
         '\nYou may also choose whether a point can be used unlimited as extend end/start-point or only once per layer/feature/part as well as whether the extended segment may cross the initial line or not.'
         )
