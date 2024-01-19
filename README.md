@@ -21,6 +21,7 @@ The algorithms are:
 - (New in v1.5) **Conditional Difference**: Builds a difference between two or more features of different or the same layer if an optional attribute condition is met. This algorithm is based on *Remove Self-Overlapping Portions by Condition* and enhances its possibilities.
 - (New in v1.6) **Densify Lines With Nearest Points By Condition**: This algorithm inserts new vertices to given lines based on the nearest points of a given point layer. You can either modify the lines path or leave it unchanged and only densified.
 - (New in v1.6) **Split Lines At Nearest Points By Condition**: This algorithm splits lines at the nearest points by using an optional attribute condition. You can either modify the lines path and split the lines at the nearest points themselves or preserve the line paths and split the lines at interpolated points, nearest to the nearest points.
+- (New in v1.7) **Extend Lines To Nearest Points By Condition**: Extends lines and/or line parts to nearest points by using an optional attribute condition. The initial line path is not modified.
 
 ### Vector - Creation
 - (New in v1.0) **Create Timepolygons With Pointcount**: Creates x duplicates of given polygons in a given timerange with from- and to-timestamp and the pointcount falling inbetween this timerange and geometry.
