@@ -16,9 +16,10 @@ License: GNU General Public License v3.0
 
 import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPointXY, QgsWkbTypes,
+from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsGeometry, QgsPoint, QgsWkbTypes,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils, QgsProcessingParameterDefinition,
-                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
+                       QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, 
+                       QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString, QgsProcessingParameterBoolean)
 
 class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
     SOURCE_LYR = 'SOURCE_LYR'
@@ -73,16 +74,59 @@ class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
                                                                                                ], defaultValue = [0], allowMultiple = False))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.EXTEND_DIST, self.tr('Maximum extend distance (Must evaluate to float; 0 or negative means unlimited)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0))
+                self.EXTEND_DIST, self.tr('Maximum extend distance / distance to nearest points (Must evaluate to float; 0 or negative means unlimited)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.MIN_DIST, self.tr('Extend only if distance to nearest point is greater than X'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0))
+                self.MIN_DIST, self.tr('Extend only if distance to nearest point is greater than X (Must evaluate to float)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0))
         self.addParameter(
             QgsProcessingParameterBoolean(
-                self.ALLOW_SELF_CROSSING, self.tr('Allow self-crossing of a result path? '
+                self.ALLOW_SELF_CROSSING, self.tr('Allow path-crossing of extended segments? '
                                                   '\nUnchecking this option can exponentially slow down the algorithm!'
-                                                  '\nIf not allowed, it keeps searching for a nearest point until it finds one, where resulting line will not cross itself.'
+                                                  '\nIf not allowed, it keeps searching for a nearest point until it finds one, where resulting segment will not cross initial path.'
                                                   '\nIf it cannot find such a point, the line/part will not be extended.'), defaultValue = True))
+        
+        ### Conditionals ###
+        parameter_source_compare_expression = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression.setFlags(parameter_source_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression)
+        
+        parameter_operation = QgsProcessingParameterEnum(
+                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation.setFlags(parameter_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation)
+        
+        parameter_points_compare_expression = QgsProcessingParameterExpression(
+                self.POINTS_COMPARE_EXPRESSION, self.tr('Compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True)
+        parameter_points_compare_expression.setFlags(parameter_points_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_points_compare_expression)
+        
+        parameter_concat_operation = QgsProcessingParameterEnum(
+                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False)
+        parameter_concat_operation.setFlags(parameter_concat_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_concat_operation)
+        
+        parameter_source_compare_expression2 = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression2.setFlags(parameter_source_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression2)
+                
+        parameter_operation2 = QgsProcessingParameterEnum(
+                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation2.setFlags(parameter_operation2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation2)
+        
+        parameter_points_compare_expression2 = QgsProcessingParameterExpression(
+                self.POINTS_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True)
+        parameter_points_compare_expression2.setFlags(parameter_points_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_points_compare_expression2)
+        
+        ### Output ###
+        self.addParameter(
+            QgsProcessingParameterFeatureSink(
+                self.OUTPUT, self.tr('Extended lines')))
+        
+        """
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
@@ -104,10 +148,8 @@ class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.POINTS_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterFeatureSink(
-                self.OUTPUT, self.tr('Extended lines')))
-
+        """
+        
     def processAlgorithm(self, parameters, context, feedback):
         feedback.setProgressText('Prepare processing...')
         source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context)
@@ -200,17 +242,17 @@ class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
         if source_layer.sourceCrs() != points_layer_vl.sourceCrs():
             feedback.setProgressText('Reprojecting Points Layer...')
             reproject_params = {'INPUT': points_layer_vl, 'TARGET_CRS': source_layer.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}
-            reproject_result = processing.run('native:reprojectlayer', reproject_params)
+            reproject_result = processing.run('native:reprojectlayer', reproject_params, context=context, feedback=feedback)
             points_layer_vl = reproject_result['OUTPUT']
         
         if points_layer_vl.geometryType() == QgsWkbTypes.PolygonGeometry or points_layer_vl.geometryType() == QgsWkbTypes.LineGeometry:
             feedback.setProgressText('Extracting Vertices...')
-            extractvertices_result = processing.run("native:extractvertices",{'INPUT':points_layer_vl,'OUTPUT':'TEMPORARY_OUTPUT'})
+            extractvertices_result = processing.run("native:extractvertices",{'INPUT':points_layer_vl,'OUTPUT':'TEMPORARY_OUTPUT'}, context=context, feedback=feedback)
             points_layer_vl = extractvertices_result['OUTPUT']
         
         if QgsWkbTypes.isMultiType(points_layer_vl.wkbType()):
             feedback.setProgressText('Converting Multipoints to Singlepoints...')
-            multitosinglepart_result = processing.run("native:multiparttosingleparts",{'INPUT':points_layer_vl,'OUTPUT':'TEMPORARY_OUTPUT'})
+            multitosinglepart_result = processing.run("native:multiparttosingleparts",{'INPUT':points_layer_vl,'OUTPUT':'TEMPORARY_OUTPUT'}, context=context, feedback=feedback)
             points_layer_vl = multitosinglepart_result['OUTPUT']
         else:
             points_layer_vl = points_layer_vl
@@ -365,7 +407,7 @@ class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
                         new_geom.insertVertex(nearest_neighbor_geom.vertices().next(),vertex_id)
                     if not allow_self_crossing:
                         test_geom = QgsGeometry.fromPolyline([new_geom.vertexAt(vertex_id),new_geom.vertexAt(vertex_id+1)])
-                        if new_geom.crosses(test_geom):
+                        if old_geom.crosses(test_geom):
                             if not extend_multiple == 0:
                                 points_skip.remove(nearest_neighbor_id)
                             new_geom =  QgsGeometry(old_geom.constGet().clone()) # restore old geometry
@@ -405,9 +447,7 @@ class ExtendLinesToNearestPointsByCondition(QgsProcessingAlgorithm):
 
     def shortHelpString(self):
         return self.tr(
-        '....'
-        '\n....'
-        '\n....'
-        '\n....'
-        '\n....'
+        'This algorithm extends lines and/or line parts to nearest points by using an optional attribute condition. The initial line/part will not be modified.'
+        '\nYou can also set the maximum search distance for points or use an option to not extend a line/part if the start/end vertex already is on a nearest point respecitvely the points are closer than X.'
+        '\nYou may also choose whether a point can be used unlimited as extend end/start-point or only once per layer/feature/part as well as whether the extended segment may cross the initial line or not.'
         )
