@@ -116,11 +116,11 @@ class CountNearestFeaturesByCategory(QgsProcessingAlgorithm):
         if source_layer_vl.sourceCrs() != overlay_layer_vl.sourceCrs():
             feedback.setProgressText('Reprojecting Overlay Layer...')
             reproject_params = {'INPUT': overlay_layer_vl, 'TARGET_CRS': source_layer_vl.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}
-            reproject_result = processing.run('native:reprojectlayer', reproject_params)
+            reproject_result = processing.run('native:reprojectlayer', reproject_params, context=context, feedback=feedback)
             overlay_layer_vl = reproject_result['OUTPUT']
         
         feedback.setProgressText('Building spatial index...')
-        overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries, feedback=feedback)
             
         feedback.setProgressText('Evaluating expressions...')
         overlay_layer_dict = {}

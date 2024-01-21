@@ -63,27 +63,44 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterString(
                 self.COUNT_FIELDNAME, self.tr('Count Fieldname'), defaultValue = 'count_n', optional = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (overlay in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.OVERLAY_COMPARE_EXPRESSION, self.tr('Compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (overlay in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.OVERLAY_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
+        
+        ### Conditionals ###
+        parameter_source_compare_expression = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression.setFlags(parameter_source_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression)
+        
+        parameter_operation = QgsProcessingParameterEnum(
+                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation.setFlags(parameter_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation)
+        
+        parameter_overlay_compare_expression = QgsProcessingParameterExpression(
+                self.OVERLAY_COMPARE_EXPRESSION, self.tr('Compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True)
+        parameter_overlay_compare_expression.setFlags(parameter_overlay_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_overlay_compare_expression)
+        
+        parameter_concat_operation = QgsProcessingParameterEnum(
+                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False)
+        parameter_concat_operation.setFlags(parameter_concat_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_concat_operation)
+        
+        parameter_source_compare_expression2 = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression2.setFlags(parameter_source_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression2)
+                
+        parameter_operation2 = QgsProcessingParameterEnum(
+                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation2.setFlags(parameter_operation2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation2)
+        
+        parameter_overlay_compare_expression2 = QgsProcessingParameterExpression(
+                self.OVERLAY_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True)
+        parameter_overlay_compare_expression2.setFlags(parameter_overlay_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_overlay_compare_expression2)
+        
+        ### Output ###
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Count')))
@@ -189,11 +206,11 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
         if source_layer_vl.sourceCrs() != overlay_layer_vl.sourceCrs():
             feedback.setProgressText('Reprojecting Overlay Layer...')
             reproject_params = {'INPUT': overlay_layer_vl, 'TARGET_CRS': source_layer_vl.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}
-            reproject_result = processing.run('native:reprojectlayer', reproject_params)
+            reproject_result = processing.run('native:reprojectlayer', reproject_params, context=context, feedback=feedback)
             overlay_layer_vl = reproject_result['OUTPUT']
         
         feedback.setProgressText('Building spatial index...')
-        overlay_layer_idx = QgsSpatialIndexKDBush(overlay_layer_vl.getFeatures())
+        overlay_layer_idx = QgsSpatialIndexKDBush(overlay_layer_vl.getFeatures(), feedback=feedback)
         if overlay_layer_idx.size() == 0:
             feedback.pushWarning('Spatial Index is empty! Check if your input point layer is of type Single-Point 2D. This algorithm does not support 2.5D, 3D or MultiPoints!')
             
@@ -318,4 +335,4 @@ class CountPointsInPolygonsWithCondition(QgsProcessingAlgorithm):
     def shortHelpString(self):
         return self.tr('This algorithm counts points in polygons with given condition(s). '
                        'This algorithm does only work with 2D-Single-Points, Multi-Points or 3D-Points are not supported; '
-                       'it is much faster than "Count Features in Features with Condition" if you want to count points in polygons')
+                       'it is much faster than "Count Features in Features with Condition" if you want to count 2D-single-points in polygons')

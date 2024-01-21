@@ -65,27 +65,44 @@ class ConditionalDifference(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.OVERLAY_FILTER_EXPRESSION, self.tr('Filter-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (join in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.OVERLAY_COMPARE_EXPRESSION, self.tr('Compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (overlay in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.OVERLAY_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True))
+        
+        ### Conditionals ###
+        parameter_source_compare_expression = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression.setFlags(parameter_source_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression)
+        
+        parameter_operation = QgsProcessingParameterEnum(
+                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation.setFlags(parameter_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation)
+        
+        parameter_overlay_compare_expression = QgsProcessingParameterExpression(
+                self.OVERLAY_COMPARE_EXPRESSION, self.tr('Compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True)
+        parameter_overlay_compare_expression.setFlags(parameter_overlay_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_overlay_compare_expression)
+        
+        parameter_concat_operation = QgsProcessingParameterEnum(
+                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False)
+        parameter_concat_operation.setFlags(parameter_concat_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_concat_operation)
+        
+        parameter_source_compare_expression2 = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression2.setFlags(parameter_source_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression2)
+                
+        parameter_operation2 = QgsProcessingParameterEnum(
+                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation2.setFlags(parameter_operation2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation2)
+        
+        parameter_overlay_compare_expression2 = QgsProcessingParameterExpression(
+                self.OVERLAY_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Overlay-Layer'), parentLayerParameterName = 'OVERLAY_LYR', optional = True)
+        parameter_overlay_compare_expression2.setFlags(parameter_overlay_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_overlay_compare_expression2)
+        
+        ### Output ###
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Difference')))
@@ -183,7 +200,7 @@ class ConditionalDifference(QgsProcessingAlgorithm):
         current = 0
         
         feedback.setProgressText('Building spatial index...')
-        overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        overlay_layer_idx = QgsSpatialIndex(overlay_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries, feedback=feedback)
         
         source_orderby_request = QgsFeatureRequest()
         if source_orderby_expression not in (QgsExpression(''),QgsExpression(None)):

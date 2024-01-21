@@ -16,7 +16,7 @@ License: GNU General Public License v3.0
 
 import operator, processing
 from PyQt5.QtCore import QCoreApplication, QVariant
-from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex,
+from qgis.core import (QgsField, QgsFeature, QgsProcessing, QgsExpression, QgsSpatialIndex, QgsProcessingParameterDefinition,
                        QgsFeatureSink, QgsFeatureRequest, QgsProcessingAlgorithm, QgsExpressionContext, QgsExpressionContextUtils,
                        QgsProcessingParameterVectorLayer, QgsProcessingParameterFeatureSink, QgsProcessingParameterField, QgsProcessingParameterBoolean, QgsProcessingParameterDistance, QgsProcessingParameterFeatureSource, QgsProcessingParameterEnum, QgsProcessingParameterExpression, QgsProcessingParameterNumber, QgsProcessingParameterString)
 
@@ -76,27 +76,44 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
         self.addParameter(
             QgsProcessingParameterBoolean(
                 self.JOIN_MULTIPLE, self.tr('Join Features more than once (if not checked, a feature is only joined to the first match, ordered by expression or feature id)'), optional = True, defaultValue = True))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (join in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.JOIN_COMPARE_EXPRESSION, self.tr('Compare-Expression for Join-Layer'), parentLayerParameterName = 'JOIN_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (join in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.JOIN_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Join-Layer'), parentLayerParameterName = 'JOIN_LYR', optional = True))
+        
+        ### Conditionals ###
+        parameter_source_compare_expression = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression.setFlags(parameter_source_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression)
+        
+        parameter_operation = QgsProcessingParameterEnum(
+                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation.setFlags(parameter_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation)
+        
+        parameter_join_compare_expression = QgsProcessingParameterExpression(
+                self.JOIN_COMPARE_EXPRESSION, self.tr('Compare-Expression for Join-Layer'), parentLayerParameterName = 'JOIN_LYR', optional = True)
+        parameter_join_compare_expression.setFlags(parameter_join_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_join_compare_expression)
+        
+        parameter_concat_operation = QgsProcessingParameterEnum(
+                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False)
+        parameter_concat_operation.setFlags(parameter_concat_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_concat_operation)
+        
+        parameter_source_compare_expression2 = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression2.setFlags(parameter_source_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression2)
+                
+        parameter_operation2 = QgsProcessingParameterEnum(
+                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation2.setFlags(parameter_operation2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation2)
+        
+        parameter_join_compare_expression2 = QgsProcessingParameterExpression(
+                self.JOIN_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Join-Layer'), parentLayerParameterName = 'JOIN_LYR', optional = True)
+        parameter_join_compare_expression2.setFlags(parameter_join_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_join_compare_expression2)
+        
+        ### Output ###
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Joined Layer')))
@@ -229,16 +246,16 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
         if source_layer.sourceCrs() != join_layer_vl.sourceCrs():
             feedback.setProgressText('Reprojecting Join Layer...')
             reproject_params = {'INPUT': join_layer_vl, 'TARGET_CRS': source_layer.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}
-            reproject_result = processing.run('native:reprojectlayer', reproject_params)
+            reproject_result = processing.run('native:reprojectlayer', reproject_params, context=context, feedback=feedback)
             join_layer_vl = reproject_result['OUTPUT']
         if method == 1:
             feedback.setProgressText('Creating centroids for Join Layer...')
             centroid_params = { 'ALL_PARTS' : False, 'INPUT' : join_layer_vl, 'OUTPUT' : 'memory:Centroids' }
-            centroid_result = processing.run("native:centroids", centroid_params)
+            centroid_result = processing.run("native:centroids", centroid_params, context=context, feedback=feedback)
             join_layer_vl = centroid_result['OUTPUT']
         
         feedback.setProgressText('Building spatial index...')
-        join_layer_idx = QgsSpatialIndex(join_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        join_layer_idx = QgsSpatialIndex(join_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries, feedback=feedback)
         
         source_orderby_request = QgsFeatureRequest()
         if source_orderby_expression not in (QgsExpression(''),QgsExpression(None)):
@@ -357,4 +374,5 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
         return 'Vector - Conditional'
 
     def shortHelpString(self):
-        return self.tr('This Algorithm creates a copy of the source layer, finds the x nearest neighbors by a given condition and joins them.')
+        return self.tr('This Algorithm creates a copy of the source layer, finds the x nearest neighbors by a given optional condition and joins its attributes to the source layer. '
+        '\nAdditionally it adds two attributes: Join distance and shortest line as WKT. Note that both of these are calculated using strictly Cartesian mathematics.')
