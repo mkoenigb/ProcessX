@@ -66,39 +66,50 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
                 self.AVOID_DUPLICATE_NODES, self.tr('Avoid duplicate nodes, empty, null or invalid geometries'), defaultValue = 1))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.DROP_LENGTH, self.tr('Drop lines or line parts equal or shorter than X (must evaluate to float; neagtive means keep all)'), defaultValue = 0.0, parentLayerParameterName = 'SOURCE_LYR', optional = False))
+                self.DROP_LENGTH, self.tr('Drop lines or line parts equal or shorter than X (must evaluate to float; negative means keep all)'), defaultValue = 0.0, parentLayerParameterName = 'SOURCE_LYR', optional = False))
                 
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.MAX_DIST, self.tr('Maximum distance to split points (must evaluate to float; 0 or negative means unlimited)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 0, optional = False))
         
         
-        #parameter_source_compare_expression = QgsProcessingParameterExpression(
-        #        self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
-        #parameter_source_compare_expression.setFlags(parameter_source_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
-        #self.addParameter(parameter_source_compare_expression)
+        ### Conditionals ###
+        parameter_source_compare_expression = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression.setFlags(parameter_source_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression)
         
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION, self.tr('Compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.POINTS_COMPARE_EXPRESSION, self.tr('Compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True))
-        self.addParameter(
-            QgsProcessingParameterEnum(
-                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False))
-        self.addParameter(
-            QgsProcessingParameterExpression(
-                self.POINTS_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True))
+        parameter_operation = QgsProcessingParameterEnum(
+                self.OPERATION, self.tr('Comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation.setFlags(parameter_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation)
+        
+        parameter_points_compare_expression = QgsProcessingParameterExpression(
+                self.POINTS_COMPARE_EXPRESSION, self.tr('Compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True)
+        parameter_points_compare_expression.setFlags(parameter_points_compare_expression.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_points_compare_expression)
+        
+        parameter_concat_operation = QgsProcessingParameterEnum(
+                self.CONCAT_OPERATION, self.tr('And / Or a second condition. (To only use one condition, leave this to AND)'), ['AND','OR','XOR','iAND','iOR','iXOR','IS','IS NOT'], defaultValue = 0, allowMultiple = False)
+        parameter_concat_operation.setFlags(parameter_concat_operation.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_concat_operation)
+        
+        parameter_source_compare_expression2 = QgsProcessingParameterExpression(
+                self.SOURCE_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Source-Layer'), parentLayerParameterName = 'SOURCE_LYR', optional = True)
+        parameter_source_compare_expression2.setFlags(parameter_source_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_source_compare_expression2)
+                
+        parameter_operation2 = QgsProcessingParameterEnum(
+                self.OPERATION2, self.tr('Second comparison operator (if no operator is set, the comparison expressions/fields remain unused) [optional]'), [None,'!=','=','<','>','<=','>=','is','is not','contains (points in source)'], defaultValue = 0, allowMultiple = False)
+        parameter_operation2.setFlags(parameter_operation2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_operation2)
+        
+        parameter_points_compare_expression2 = QgsProcessingParameterExpression(
+                self.POINTS_COMPARE_EXPRESSION2, self.tr('Second compare-Expression for Points-Layer'), parentLayerParameterName = 'POINTS_LYR', optional = True)
+        parameter_points_compare_expression2.setFlags(parameter_points_compare_expression2.flags() | QgsProcessingParameterDefinition.FlagAdvanced)
+        self.addParameter(parameter_points_compare_expression2)
+        
+        ### Output ###
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Splitted Lines')))
@@ -193,12 +204,12 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
         if source_layer.sourceCrs() != points_layer_vl.sourceCrs():
             feedback.setProgressText('Reprojecting Points Layer...')
             reproject_params = {'INPUT': points_layer_vl, 'TARGET_CRS': source_layer.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}
-            reproject_result = processing.run('native:reprojectlayer', reproject_params)
+            reproject_result = processing.run('native:reprojectlayer', reproject_params, context=context, feedback=feedback)
             points_layer_vl = reproject_result['OUTPUT']
             
         if QgsWkbTypes.isMultiType(points_layer_vl.wkbType()):
             feedback.setProgressText('Converting Multipoints to Singlepoints...')
-            multitosinglepart_result = processing.run("native:multiparttosingleparts",{'INPUT':points_layer_vl,'OUTPUT':'TEMPORARY_OUTPUT'})
+            multitosinglepart_result = processing.run("native:multiparttosingleparts",{'INPUT':points_layer_vl,'OUTPUT':'TEMPORARY_OUTPUT'}, context=context, feedback=feedback)
             points_layer_vl = multitosinglepart_result['OUTPUT']
         else:
             points_layer_vl = points_layer_vl
@@ -213,7 +224,7 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
         current = 0
         
         feedback.setProgressText('Building spatial index...')
-        points_layer_idx = QgsSpatialIndex(points_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+        points_layer_idx = QgsSpatialIndex(points_layer_vl.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries, feedback=feedback)
         
         if comparisons: # dictonaries are a lot faster than featurerequests; https://gis.stackexchange.com/q/434768/107424
             feedback.setProgressText('Evaluating expressions...')
