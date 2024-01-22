@@ -34,10 +34,10 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
                 self.SOURCE_LYR, self.tr('Source Layer (must be in metric CRS!)'),[QgsProcessing.TypeVectorLine]))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.SOURCE_START_TIME_EXPR, self.tr('Expression, field or datetime representing start-datetime of features (must be in datetime format!)'), parentLayerParameterName = 'SOURCE_LYR', optional = False))
+                self.SOURCE_START_TIME_EXPR, self.tr('Expression, field or datetime representing start-datetime of features (must be in datetime format!)'), parentLayerParameterName = 'SOURCE_LYR', optional = False, defaultValue = 'now()'))
         self.addParameter(
             QgsProcessingParameterExpression(
-                self.SOURCE_END_TIME_EXPR, self.tr('Expression, field or datetime representing end-datetime of features (must be in datetime format!)'), parentLayerParameterName = 'SOURCE_LYR', optional = False))
+                self.SOURCE_END_TIME_EXPR, self.tr('Expression, field or datetime representing end-datetime of features (must be in datetime format!)'), parentLayerParameterName = 'SOURCE_LYR', optional = False, defaultValue = 'now() + to_interval(\'60 minutes\')'))
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.SOURCE_INTERPOLATION_DENSITY_EXPR, self.tr('Expression, field or number representing maximum length of segments (integer or double; must be in meters!)'), parentLayerParameterName = 'SOURCE_LYR', optional = False, defaultValue = 'length($geometry) / 10'))
@@ -97,6 +97,7 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
                                                output_layer_fields, source_layer.wkbType(),
                                                source_layer.sourceCrs())
         
+        
         total = 100.0 / source_layer_vl.featureCount() if source_layer_vl.featureCount() else 0
         
         feedback.setProgressText('Start processing...')
@@ -150,8 +151,8 @@ class InterpolateDateTimeAlongLine(QgsProcessingAlgorithm):
                     segment_linestring = source_part.curveSubstring(segment_startdistance,segment_enddistance)
                     segment_geom = QgsGeometry.fromPolyline(segment_linestring)
                     
-                    segment_startpoint = QgsGeometry.fromPointXY(QgsPointXY(segment_linestring[0]))
-                    segment_endpoint = QgsGeometry.fromPointXY(QgsPointXY(segment_linestring[-1]))
+                    segment_startpoint = QgsGeometry.fromWkt(segment_linestring[0].asWkt()) # QgsGeometry.fromPointXY(QgsPointXY(segment_linestring[0]))
+                    segment_endpoint = QgsGeometry.fromWkt(segment_linestring[-1].asWkt()) # QgsGeometry.fromPointXY(QgsPointXY(segment_linestring[-1]))
                     segment_start_distance_from_line_start = source_geom.lineLocatePoint(segment_startpoint)
                     segment_end_distance_from_line_start = source_geom.lineLocatePoint(segment_endpoint)
                     interpolated_starttime = source_start_time_expr_result.addSecs(segment_start_distance_from_line_start / speed_m_per_s)
