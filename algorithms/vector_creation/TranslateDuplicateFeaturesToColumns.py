@@ -102,7 +102,7 @@ class TranslateDuplicateFeaturesToColumns(QgsProcessingAlgorithm):
         duplicate_geom_dict = {}
         if duplicate_method in (1,2,3):
             feedback.setProgressText('Building spatial index...')
-            source_layer_idx = QgsSpatialIndex(source_layer.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
+            source_layer_idx = QgsSpatialIndex(source_layer.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries, feedback=feedback)
         feedback.setProgressText('Evaluating geometries/expressions...')
         for source_feat in source_layer.getFeatures(source_orderby_request):
             current += 1

@@ -96,8 +96,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
         total = 100.0 / source_layer_feature_count if source_layer_feature_count else 0
         
         feedback.setProgressText('Building spatial index...')
-        overlay_layer_idx = QgsSpatialIndex(overlay_layer.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries)
-        
+        overlay_layer_idx = QgsSpatialIndex(overlay_layer.getFeatures(), flags=QgsSpatialIndex.FlagStoreFeatureGeometries, feedback=feedback)
         
         feedback.setProgressText('Start processing...')
         for current, source_feat in enumerate(source_layer.getFeatures()):

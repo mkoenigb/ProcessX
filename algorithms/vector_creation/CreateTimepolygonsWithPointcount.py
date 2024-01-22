@@ -73,7 +73,7 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
         
         if lyr_polygons.sourceCrs() != lyr_points.sourceCrs():
             feedback.setProgressText('Reprojecting Point Layer...')
-            reproj = processing.run('native:reprojectlayer', {'INPUT': lyr_points, 'TARGET_CRS': lyr_polygons.sourceCrs(), 'OUTPUT': 'memory:Reprojected'})
+            reproj = processing.run('native:reprojectlayer', {'INPUT': lyr_points, 'TARGET_CRS': lyr_polygons.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}, context=context, feedback=feedback)
             lyr_points = reproj['OUTPUT']
         
         fields = lyr_polygons.fields()
@@ -90,7 +90,7 @@ class CreateTimepolygonsWithPointcount(QgsProcessingAlgorithm):
         total_seconds = int((end_date - start_date).total_seconds())
         
         feedback.setProgressText('Building spatial index...')
-        idx_points = QgsSpatialIndex(lyr_points.getFeatures())
+        idx_points = QgsSpatialIndex(lyr_points.getFeatures(), feedback=feedback)
         
         required_iterations = math.ceil(total_seconds / intervalsec) 
         total = 100.0 / (lyr_polygons.featureCount() * required_iterations) if lyr_polygons.featureCount() else 0
