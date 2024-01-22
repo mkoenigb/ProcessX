@@ -196,6 +196,9 @@ class SplitLinesAtNearestPointsByCondition(QgsProcessingAlgorithm):
                                                output_layer_fields, source_layer_vl.wkbType(),
                                                source_layer_vl.sourceCrs())
             
+        if source_layer_vl.crs().isGeographic():
+            feedback.reportError('WARNING: Your Source-Layer is in a geographic CRS. It must be in a projected CRS, otherwise you may encounter weird or incorrect results.')
+            
         if source_filter_expression not in (QgsExpression(''),QgsExpression(None)):
             source_layer_vl = source_layer_vl.materialize(QgsFeatureRequest(source_filter_expression))
         if points_filter_expression not in (QgsExpression(''),QgsExpression(None)):
