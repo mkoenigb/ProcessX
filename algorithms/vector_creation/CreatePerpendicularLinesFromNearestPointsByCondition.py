@@ -27,6 +27,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
     MAX_DIST = 'MAX_DIST'
     MAX_NEIGHBORS = 'MAX_NEIGHBORS'
     LINE_LENGTH = 'LINE_LENGTH'
+    #INCLINATION90 = 'INCLINATION90'
     SOURCE_LYR_ORDERBY = 'SOURCE_LYR_ORDERBY'
     FIRST_MATCH_ONLY = 'FIRST_MATCH_ONLY'
     SOURCE_COMPARE_EXPRESSION = 'SOURCE_COMPARE_EXPRESSION'
@@ -66,6 +67,9 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
         self.addParameter(
             QgsProcessingParameterExpression(
                 self.LINE_LENGTH, self.tr('Length of perpendicular line \n(must evaluate to float or int; must be greater 0)'), parentLayerParameterName = 'SOURCE_LYR', defaultValue = 1))
+        #self.addParameter(
+        #    QgsProcessingParameterBoolean(
+        #        self.INCLINATION90, self.tr('Use an inclination of 90° for perpendicular lines \nIf unchecked, the inclination between point and line is used'), defaultValue = 1))
         
         ### Conditionals ###
         parameter_source_compare_expression = QgsProcessingParameterExpression(
@@ -110,7 +114,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
 
     def processAlgorithm(self, parameters, context, feedback):
         feedback.setProgressText('Prepare processing...')
-        #source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context) # Cant use Feature Source due to a bug when reprojecting; see: https://gis.stackexchange.com/questions/450122/qgscoordinatetransform-causes-crash-in-processing-script
+        #source_layer = self.parameterAsSource(parameters, self.SOURCE_LYR, context)
         source_layer_vl = self.parameterAsLayer(parameters, self.SOURCE_LYR, context)
         #overlay_layer = self.parameterAsSource(parameters, self.OVERLAY_LYR, context)
         overlay_layer_vl = self.parameterAsLayer(parameters, self.OVERLAY_LYR, context)
@@ -120,6 +124,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
         max_neighbors_expression = QgsExpression(max_neighbors)
         line_length = self.parameterAsExpression(parameters, self.LINE_LENGTH, context)
         line_length_expression = QgsExpression(line_length)
+        #inclination90 = self.parameterAsBool(parameters, self.INCLINATION90, context)
         
         source_orderby_expression = self.parameterAsExpression(parameters, self.SOURCE_LYR_ORDERBY, context)
         source_orderby_expression = QgsExpression(source_orderby_expression)
@@ -193,11 +198,14 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             overlay_layer_vl = overlay_layer_vl.materialize(QgsFeatureRequest(overlay_filter_expression))
         
         field_name_dict = {
+                'source_point_feature_id_fieldname': 'source_point_feature_id',
+                'source_point_wkt_fieldname': 'source_point_wkt',
                 'cross_line_feature_id_fieldname': 'cross_line_feature_id',
-                'cross_line_segment_wkt_fieldname': 'cross_line_segment_wkt',
-                'cross_line_segment_angle_fieldname': 'cross_line_segment_angle_degree',
-                'intersection_point_wkt_fieldname': 'intersection_point_wkt',
-                'distance_point_to_nearest_line_fieldname': 'distance_point_to_nearest_line'
+                'cross_line_intersection_point_wkt_fieldname': 'cross_line_intersection_point_wkt',
+                'cross_line_intersection_point_distance_along_line_fieldname': 'cross_line_intersection_point_distance_along_line',
+                'cross_line_interpolated_angle_fieldname': 'cross_line_interpolated_angle_degree',
+                'distance_source_point_to_cross_line_fieldname': 'distance_source_point_to_cross_line',
+                'inclination_source_point_to_cross_line_fieldname': 'inclination_source_point_to_cross_line'
             }
         
         output_layer_fields = source_layer_vl.fields()
@@ -209,14 +217,23 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             if whilecounter > 9:
                 feedback.setProgressText('You should clean up your fieldnames!')
                 break
+        output_layer_fields.append(QgsField(field_name_dict['source_point_feature_id_fieldname'], QVariant.Int))
+        output_layer_fields.append(QgsField(field_name_dict['source_point_wkt_fieldname'], QVariant.String))
         output_layer_fields.append(QgsField(field_name_dict['cross_line_feature_id_fieldname'], QVariant.Int))
-        output_layer_fields.append(QgsField(field_name_dict['cross_line_segment_wkt_fieldname'], QVariant.String))
-        output_layer_fields.append(QgsField(field_name_dict['cross_line_segment_angle_fieldname'], QVariant.Double))
-        output_layer_fields.append(QgsField(field_name_dict['intersection_point_wkt_fieldname'], QVariant.String))
-        output_layer_fields.append(QgsField(field_name_dict['distance_point_to_nearest_line_fieldname'], QVariant.Double))
+        output_layer_fields.append(QgsField(field_name_dict['cross_line_intersection_point_wkt_fieldname'], QVariant.String))
+        output_layer_fields.append(QgsField(field_name_dict['cross_line_intersection_point_distance_along_line_fieldname'], QVariant.Double))
+        output_layer_fields.append(QgsField(field_name_dict['cross_line_interpolated_angle_fieldname'], QVariant.Double))
+        output_layer_fields.append(QgsField(field_name_dict['distance_source_point_to_cross_line_fieldname'], QVariant.Double))
+        output_layer_fields.append(QgsField(field_name_dict['inclination_source_point_to_cross_line_fieldname'], QVariant.Double))
+        
+        output_wkb_type = QgsWkbTypes.LineString
+        if QgsWkbTypes.hasZ(source_layer_vl.wkbType()):
+            output_wkb_type = QgsWkbTypes.addZ(output_wkb_type)
+        if QgsWkbTypes.hasM(source_layer_vl.wkbType()):
+            output_wkb_type = QgsWkbTypes.addM(output_wkb_type)
         
         (sink, dest_id) = self.parameterAsSink(parameters, self.OUTPUT, context,
-                                               output_layer_fields, QgsWkbTypes.LineString, # LineString = 2
+                                               output_layer_fields, output_wkb_type,
                                                source_layer_vl.sourceCrs())
         
         if comparisons:
@@ -233,6 +250,11 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             reproject_params = {'INPUT': overlay_layer_vl, 'TARGET_CRS': source_layer_vl.sourceCrs(), 'OUTPUT': 'memory:Reprojected'}
             reproject_result = processing.run('native:reprojectlayer', reproject_params, context=context, feedback=feedback)
             overlay_layer_vl = reproject_result['OUTPUT']
+            
+        if QgsWkbTypes.isMultiType(source_layer_vl.wkbType()):
+            feedback.setProgressText('Converting Multipoints to Singlepoints...')
+            multitosinglepart_result = processing.run("native:multiparttosingleparts",{'INPUT':source_layer_vl,'OUTPUT':'TEMPORARY_OUTPUT'}, context=context, feedback=feedback)
+            source_layer_vl = multitosinglepart_result['OUTPUT']
             
         if comparisons: # dictonaries are a lot faster than featurerequests; https://gis.stackexchange.com/q/434768/107424
             feedback.setProgressText('Evaluating expressions...')
@@ -304,7 +326,7 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             
             if expression_errors:
                 expression_errors = list(dict.fromkeys(expression_errors))
-                feedback.pushWarning('Feature ' + str(source_feat.id()) + ' evaluates to ' + ','.join(expression_errors) + '. Skipping feature.')
+                feedback.pushWarning('Feature ' + str(source_feat.id()) + ' expressions evaluate to ' + ','.join(expression_errors) + '. Skipping feature.')
                 continue
                 
             if comparisons:
@@ -315,9 +337,9 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
             
             if comparisons:
                 doit_counter = 0
-                nearest_lines = overlay_layer_idx.nearestNeighbor(source_feat.geometry().centroid().asPoint(), neighbors = -1, maxDistance = max_dist_expression_result)
+                nearest_lines = overlay_layer_idx.nearestNeighbor(source_feat.geometry(), neighbors = -1, maxDistance = max_dist_expression_result)
             else:
-                nearest_lines = overlay_layer_idx.nearestNeighbor(source_feat.geometry().centroid().asPoint(), neighbors = max_neighbors_expression_result, maxDistance = max_dist_expression_result)
+                nearest_lines = overlay_layer_idx.nearestNeighbor(source_feat.geometry(), neighbors = max_neighbors_expression_result, maxDistance = max_dist_expression_result)
             
             for nearest_line_id in nearest_lines:
                 if feedback.isCanceled():
@@ -343,16 +365,17 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
                     overlay_skip.append(nearest_line_id)
                     
                 nearest_line_geom = overlay_layer_idx.geometry(nearest_line_id)
-                point_on_nearest_line = nearest_line_geom.nearestPoint(source_feat.geometry().centroid())
-                
-                sqrDist, minDistPoint, afterVertex, leftOf = nearest_line_geom.closestSegmentWithContext(point_on_nearest_line.asPoint())
-                vertexOnSegment2 = nearest_line_geom.vertexAt(afterVertex)
-                vertexOnSegment1 = nearest_line_geom.vertexAt(afterVertex - 1)
-                segmentAngle = math.atan2(vertexOnSegment2.x() - vertexOnSegment1.x(), vertexOnSegment2.y() - vertexOnSegment1.y())
-                segmentAngleDegree = math.degrees(segmentAngle) if segmentAngle > 0 else math.degrees(segmentAngle) + 180
-                segmentgeom = QgsGeometry.fromPolyline([vertexOnSegment1,vertexOnSegment2])
-                perpendicularLinePoint1 = QgsPoint(point_on_nearest_line.asPoint().project(line_length_expression_result,segmentAngleDegree+90))
-                perpendicularLinePoint2 = QgsPoint(point_on_nearest_line.asPoint().project(line_length_expression_result,segmentAngleDegree-90))
+                dist_along_line = nearest_line_geom.lineLocatePoint(source_feat.geometry())
+                interpolated_angle = nearest_line_geom.interpolateAngle(dist_along_line)
+                interpolated_angle_degree = math.degrees(interpolated_angle)
+                point_on_nearest_line = nearest_line_geom.interpolate(dist_along_line)
+                point_on_nearest_line_as_point = point_on_nearest_line.vertices().next()
+                inclination = point_on_nearest_line_as_point.inclination(source_feat.geometry().vertices().next())
+                use_inclination = 90
+                #if inclination90:
+                #    use_inclination = inclination
+                perpendicularLinePoint1 = point_on_nearest_line_as_point.project(line_length_expression_result,interpolated_angle_degree+90,use_inclination)
+                perpendicularLinePoint2 = point_on_nearest_line_as_point.project(line_length_expression_result,interpolated_angle_degree-90,use_inclination)
                 perpendicularLineGeom = QgsGeometry.fromPolyline([perpendicularLinePoint1,perpendicularLinePoint2])
                 
                 new_feat = QgsFeature(output_layer_fields)
@@ -361,11 +384,14 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
                     new_feat[attridx] = attr
                     attridx += 1
                 new_feat.setGeometry(perpendicularLineGeom)
+                new_feat[field_name_dict['source_point_feature_id_fieldname']] = source_feat.id()
+                new_feat[field_name_dict['source_point_wkt_fieldname']] = str(source_feat.geometry().asWkt())
                 new_feat[field_name_dict['cross_line_feature_id_fieldname']] = nearest_line_id
-                new_feat[field_name_dict['cross_line_segment_wkt_fieldname']] = str(segmentgeom.asWkt())
-                new_feat[field_name_dict['cross_line_segment_angle_fieldname']] = segmentAngleDegree
-                new_feat[field_name_dict['intersection_point_wkt_fieldname']] = str(point_on_nearest_line.asWkt())
-                new_feat[field_name_dict['distance_point_to_nearest_line_fieldname']] = nearest_line_geom.distance(source_feat.geometry().centroid())
+                new_feat[field_name_dict['cross_line_intersection_point_wkt_fieldname']] = str(point_on_nearest_line.asWkt())
+                new_feat[field_name_dict['cross_line_intersection_point_distance_along_line_fieldname']] = dist_along_line
+                new_feat[field_name_dict['cross_line_interpolated_angle_fieldname']] = interpolated_angle_degree
+                new_feat[field_name_dict['distance_source_point_to_cross_line_fieldname']] = point_on_nearest_line_as_point.distance3D(source_feat.geometry().vertices().next())
+                new_feat[field_name_dict['inclination_source_point_to_cross_line_fieldname']] = inclination
                 
                 sink.addFeature(new_feat, QgsFeatureSink.FastInsert)
 
@@ -394,11 +420,13 @@ class CreatePerpendicularLinesFromNearestPointsByCondition(QgsProcessingAlgorith
 
     def shortHelpString(self):
         return self.tr(
-        'This algorithm takes points as source input and creates perpendicular lines on the nearest line by an optional attribute condition. The perpendicular line will be located on the nearest segment and intersect the line layer on the nearest point to the input points.\n '
-        'If the input point layer is of type multipoint, the centroids are taken. <b>The point layer must be in a projected CRS, otherwise the result will be incorrect!</b> See PyQGIS documentation for more informations.\n'
-        'You can also choose the iteration order of the points and set whether a perpendicular line shall only be created on the first match.\n'
-        'As maximum distance, maximum neighbors and line length you may choose an expression or field based on the points layer, so you can set these individually for each point. '
-        'If the expression evaluates to an invalid result, the feature will be skipped and no perpendicular line is created.\n'
-        'Attribute informations containing the feature id of the nearest line, wkt of the crossed segment, the angle of this segment, the intersection point and the distance from point to nearest line are added to the result.\n'
-        'Intentionally this algorithm was designed to create split lines to use in <i>Split with Lines</i> algorithm. For this purpose you may choose a very low line length like 0.000001. But of course there are many other usecases.'
+        'This algorithm takes points as source input and creates perpendicular lines on the nearest line by an optional attribute condition.'
+        ' The perpendicular line will be located on the nearest segment/vertex and intersect the line layer on the nearest point to the input points.'
+        ' The resulting cross line will have an inclination of 90°.'
+        '\nIf the input point layer is of type multipoint, it will be casted to type singlepoint. <b>The point layer must be in a projected CRS, otherwise the result will be incorrect!</b>'
+        '\nYou can also choose the iteration order of the points and set whether a perpendicular line shall only be created on the first match.'
+        ' As maximum distance, maximum neighbors and line length you may choose an expression or field, based on the points layer, so you can set these individually for each point.'
+        ' If the expression evaluates to an invalid result, the feature will be skipped and no perpendicular line is created.'
+        '\nAttribute informations containing feature id and wkt of the source-point, feature id of the nearest line, wkt of the intersection point,'
+        ' the angle at the crossed line, the inclination and the distance from source-point to the crossed line are added to the result.'
         )
