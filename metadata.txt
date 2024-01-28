@@ -25,69 +25,74 @@ changelog=
     Added algorithms:
     - Extend Lines To Nearest Points By Condition
     Improvements:
-    - to come...
+    - Moved all conditional-inputs to advanced parameters tab
+    - Added handover for feedback and context to other processing tools to all processx-processing tools
+    - Added handover for feedback to build of spatial index to all processx-processing tools
+    - Added ZM-values support to "Nearest Points To Path" (please take a look at Readme for information about 3D measure)
+    - Added ZM-values support to "Interpolate Datetime along Line" (please take a look at Readme for information about 3D measure)
+    - Reworked "Create Perpendicular Lines From Nearest Points", added ZM support and fixed QgsWkbType (due to a change in QGIS v3.30)
     v1.6
-      Added algorithms:
-      - Densify Lines With Nearest Points By Condition
-      - Split Lines At Nearest Points By Condition
-      Improvements:
-      - fixed 5th parameter of Nearest Points to Path to QgsWkbType (due to a change in QGIS v3.30)
+    Added algorithms:
+    - Densify Lines With Nearest Points By Condition
+    - Split Lines At Nearest Points By Condition
+    Improvements:
+    - fixed 5th parameter of Nearest Points to Path to QgsWkbType (due to a change in QGIS v3.30)
     v1.5
-	Added algorithms:
-	- Translate Duplicate Features to Columns
-	- Count Nearest Features by Category
-	- Remove Self-Overlapping Portions by Condition
-	- Conditional Difference
-	- Create Perpendicular Lines from Nearest Points by Condition
-	Improvements:
-	- Removed unused operator import from CountFeaturesInFeaturesByCategory
-	- Removed unused spatial index from RandomlyRedistributeFeaturesInsidePolygon
-	- Improved performance of many algorithms by moving expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes()) outside of the loops
+    Added algorithms:
+    - Translate Duplicate Features to Columns
+    - Count Nearest Features by Category
+    - Remove Self-Overlapping Portions by Condition
+    - Conditional Difference
+    - Create Perpendicular Lines from Nearest Points by Condition
+    Improvements:
+    - Removed unused operator import from CountFeaturesInFeaturesByCategory
+    - Removed unused spatial index from RandomlyRedistributeFeaturesInsidePolygon
+    - Improved performance of many algorithms by moving expression_context.appendScopes(QgsExpressionContextUtils.globalProjectLayerScopes()) outside of the loops
     v1.4
-	Added algorithms:
-	- Create Polygon from Extent
-	- Randomly Redistribute Features inside Polygon
-	- Count Features in Features by Category
-	Improvements:
-	- Fixed geometric predicate "equals" in CountFeaturesInFeaturesWithCondition
+    Added algorithms:
+    - Create Polygon from Extent
+    - Randomly Redistribute Features inside Polygon
+    - Count Features in Features by Category
+    Improvements:
+    - Fixed geometric predicate "equals" in CountFeaturesInFeaturesWithCondition
     v1.3
-	Added algorithms:
-	- Count Nearest Features by Condition
-	- Interpolate DateTime Along Line
-	Improvements:
-	- Added some missing feedback.isCanceled() listeners
+    Added algorithms:
+    - Count Nearest Features by Condition
+    - Interpolate DateTime Along Line
+    Improvements:
+    - Added some missing feedback.isCanceled() listeners
     v1.2
-	Added algorithms:
-	- Snap Vertices to nearest Points by Condition
-	- Nearest Points to Path
-	Improvements:
-	- Fixed not working FeatureSource-Inputs (replaced with VectorLayer-Input for those algorithms which do not support it and fixed it for those which are able to use this feature)
+    Added algorithms:
+    - Snap Vertices to nearest Points by Condition
+    - Nearest Points to Path
+    Improvements:
+    - Fixed not working FeatureSource-Inputs (replaced with VectorLayer-Input for those algorithms which do not support it and fixed it for those which are able to use this feature)
     v1.1.2
-	Improvements:
-	- Completely reworked Create Nested Grid algorithm (fixed bugs, added new features: choose x and y factor for subgrids yourself, choose which grid lies on top)
+    Improvements:
+    - Completely reworked Create Nested Grid algorithm (fixed bugs, added new features: choose x and y factor for subgrids yourself, choose which grid lies on top)
     v1.1.1 
-	Improvements:
-	- Fixed progress indicator for Create Nested Grid algorithm
+    Improvements:
+    - Fixed progress indicator for Create Nested Grid algorithm
     v1.1 
-	Added algorithms:
-	- Create Nested Grid
-	- Count Points in Polygons with Condition
-	Improvements:
-	- Added second condition to conditional algorithms, allowing e.g. BETWEEN operations
-	- Added order by clause to some algorithms
-	- Improved efficiency of some algorithms
-	- Removed NOT operator from conditional algorithms as it cannot be used for comparisions; Use IS NOT instead
-	- Some minor and general improvements
+    Added algorithms:
+    - Create Nested Grid
+    - Count Points in Polygons with Condition
+    Improvements:
+    - Added second condition to conditional algorithms, allowing e.g. BETWEEN operations
+    - Added order by clause to some algorithms
+    - Improved efficiency of some algorithms
+    - Removed NOT operator from conditional algorithms as it cannot be used for comparisions; Use IS NOT instead
+    - Some minor and general improvements
     v1.0 Initial Release. 
-	Added algorithms: 
-	- OpenTripPlanner Routes
-	- OpenTripPlanner Traveltime
-	- Conditional Intersection
-	- Count Features in Features with Condition
-	- Join attributes by nearest with Condition
-	- Select possible duplicate features by similarity
-	- Create Timepolygons with Pointcount
-	- New Layer from GeoJSON String
+    Added algorithms: 
+    - OpenTripPlanner Routes
+    - OpenTripPlanner Traveltime
+    - Conditional Intersection
+    - Count Features in Features with Condition
+    - Join attributes by nearest with Condition
+    - Select possible duplicate features by similarity
+    - Create Timepolygons with Pointcount
+    - New Layer from GeoJSON String
 
 # Tags are comma separated with spaces allowed
 tags=python,processing,provider,algorithm,analysis,conditional,creation,opentripplanner

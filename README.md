@@ -1,9 +1,9 @@
 # ProcessX
 Repository for QGIS ProcessX Plug-In
 
-This Plug-In adds a new processing provider to QGIS. It contains a variety of processing algorithms.
+This Plug-In adds a new processing provider to QGIS. It contains a diverse variety of processing algorithms.
 
-Please report bugs or issues you encounter with these algorithms on https://github.com/mkoenigb/processx/issues/
+Please report bugs or issues you encounter with these algorithms on https://github.com/mkoenigb/processx/issues/. I am also happy about pull requests to fix issues or to provide improvements.
 
 The algorithms are:
 
@@ -39,3 +39,7 @@ The algorithms are:
 ### OpenTripPlanner
 - (New in v1.0) **OTP Routes**: Requests routes from an OpenTripPlanner instance and creates a linelayer from the returned geometry and attributes.
 - (New in v1.0) **OTP Traveltime**: Adds some attributes to a given layer based on OpenTripPlanner routing results.
+
+# Additional Notes
+- Many algorithms may also run on earlier QGIS versions than stated in metadata.txt. The QGIS version named in metadata.txt is just the oldest version tests are made with.
+- Even though some/many algorithms support 3D geometries, if the algorithm uses a QgsSpatialIndex() (which most algorithms do) to find nearby geometries, the nearest neighbors may be incorrect (or just not accurate enough), because QgsSpatialIndex() does not support 3D measures, see my QA: https://gis.stackexchange.com/questions/474827/does-qgsspatialindex-support-z-values-respectively-3d-distances
