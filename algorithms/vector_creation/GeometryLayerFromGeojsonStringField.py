@@ -33,7 +33,7 @@ class GeometryLayerFromGeojsonStringField(QgsProcessingAlgorithm):
                 self.SOURCE_LYR, self.tr('Source')))
         self.addParameter(
             QgsProcessingParameterField(
-                self.GEOJSON_FIELD, self.tr('Field containing the GeoJSON as string'),'GeoJSON','SOURCE_LYR', 1))
+                self.GEOJSON_FIELD, self.tr('Field containing the GeoJSON as string'),'GeoJSON','SOURCE_LYR', QgsProcessingParameterField.String))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.GEOMETRYTYPE_ENUM, self.tr('Geometry type of the target layer / of the GeoJSON content'),

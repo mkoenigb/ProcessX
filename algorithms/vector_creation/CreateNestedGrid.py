@@ -74,19 +74,19 @@ class CreateNestedGrid(QgsProcessingAlgorithm):
                 self.STARTWITHPARENT, self.tr('Start with Parentgrid, so larger grids lie behind their childs (if unchecked, the largest grid lies on top and childs are not initially visible)'), defaultValue = 0))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.SUBGRIDS, self.tr('Number of Subgrids incl. Parentgrid (1 means only Parentgrid)'), minValue = 1, maxValue = 999, defaultValue = 3, type = 0))
+                self.SUBGRIDS, self.tr('Number of Subgrids incl. Parentgrid (1 means only Parentgrid)'), minValue = 1, maxValue = 999, defaultValue = 3, type = QgsProcessingParameterNumber.Integer))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.XSPACING, self.tr('X-Spacing of Parentgrid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
+                self.XSPACING, self.tr('X-Spacing of Parentgrid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = QgsProcessingParameterNumber.Double))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.XFACTOR, self.tr('X-Factor: Number of childcells per parentcell in X direction'), minValue = 1, maxValue = 9999, defaultValue = 2, type = 0))
+                self.XFACTOR, self.tr('X-Factor: Number of childcells per parentcell in X direction'), minValue = 1, maxValue = 9999, defaultValue = 2, type = QgsProcessingParameterNumber.Integer))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.YSPACING, self.tr('Y-Spacing of Parentgrid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = 1))
+                self.YSPACING, self.tr('Y-Spacing of Parentgrid in Extent-CRS-Units'), minValue = 0.000001, defaultValue = 1000, type = QgsProcessingParameterNumber.Double))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.YFACTOR, self.tr('Y-Factor: Number of childcells per parentcell in Y direction'), minValue = 1, maxValue = 9999, defaultValue = 2, type = 0))
+                self.YFACTOR, self.tr('Y-Factor: Number of childcells per parentcell in Y direction'), minValue = 1, maxValue = 9999, defaultValue = 2, type = QgsProcessingParameterNumber.Integer))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('Grid')))

@@ -50,7 +50,7 @@ class RandomlyRedistributeFeaturesInsidePolygon(QgsProcessingAlgorithm):
                 self.ROTATE, self.tr('Also rotate features randomly'), defaultValue = True))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.MAX_TRY, self.tr('Maximum tries to randomly translate source geometry inside overlay polygon (0 means infinite)'), defaultValue = 0, minValue = 0, type = 0)) # type 0 = Int
+                self.MAX_TRY, self.tr('Maximum tries to randomly translate source geometry inside overlay polygon (0 means infinite)'), defaultValue = 0, minValue = 0, type = QgsProcessingParameterNumber.Integer))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.HANDLE_MULTIPLE_OVERLAYS, self.tr('Handle multiple overlays'), ['Take the first overlay polygon only',
