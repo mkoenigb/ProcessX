@@ -66,7 +66,7 @@ class JoinAttributesByNearestWithCondition(QgsProcessingAlgorithm):
                 self.JOIN_FIELDS, self.tr('Add the following fields of join layer to result (if none are chosen, all fields will be added)'),parentLayerParameterName='JOIN_LYR', allowMultiple = True, optional = True))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.JOIN_N, self.tr('Join x nearest neighbors (0 means unlimited)'), type = 0, defaultValue = 3, minValue = 0, maxValue = 2147483647))
+                self.JOIN_N, self.tr('Join x nearest neighbors (0 means unlimited)'), type = QgsProcessingParameterNumber.Integer, defaultValue = 3, minValue = 0, maxValue = 2147483647))
         self.addParameter(
             QgsProcessingParameterDistance(
                 self.JOIN_DIST, self.tr('Maximum join distance (0 means unlimited)'), parentParameterName = 'SOURCE_LYR', defaultValue = 0, minValue = 0, maxValue = 2147483647))

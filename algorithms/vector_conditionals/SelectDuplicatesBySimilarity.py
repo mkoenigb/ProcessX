@@ -40,7 +40,7 @@ class SelectDuplicatesBySimilarity(QgsProcessingAlgorithm):
                 self.SOURCE_FIELD, self.tr('Attribute Field to search for similarity'),'Name','SOURCE_LYR')) # Choose the Trigger field of the source layer, default if exists is 'Trigger'
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.MAX_DISTANCE, self.tr('Maximum Search Distance for Duplicates in Layer CRS units'),1,10000))
+                self.MAX_DISTANCE, self.tr('Maximum Search Distance for Duplicates in Layer CRS units'),type = QgsProcessingParameterNumber.Double, defaultValue = 10000))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.ALGORITHM, self.tr('Select the Algorithms you want to use to identify similar attributes.'),
@@ -55,13 +55,13 @@ class SelectDuplicatesBySimilarity(QgsProcessingAlgorithm):
                 self.ANDORALG, self.tr('Choose if all selected algorithms need to fulfill criteria or only at least one'),['All','Only at least one'],defaultValue=0))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.THRESHOLD_LEVENSHTEIN, self.tr('Choose a Threshold for Levenshtein < Threshold'),0,None,True,0))
+                self.THRESHOLD_LEVENSHTEIN, self.tr('Choose a Threshold for Levenshtein < Threshold'),type = QgsProcessingParameterNumber.Integer, defaultValue = None, optional = True, minValue = 0))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.THRESHOLD_SUBSTRING, self.tr('Choose a Threshold for Longest Common Substring > (Length of Attributevalue - Threshold)'),0,None,True,0))
+                self.THRESHOLD_SUBSTRING, self.tr('Choose a Threshold for Longest Common Substring > (Length of Attributevalue - Threshold)'),type = QgsProcessingParameterNumber.Integer, defaultValue = None, optional = True, minValue = 0))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.THRESHOLD_HAMMING, self.tr('Choose a Threshold for Hamming Distance > (Length of Attributevalue - Threshold)'),0,None,True,0))
+                self.THRESHOLD_HAMMING, self.tr('Choose a Threshold for Hamming Distance > (Length of Attributevalue - Threshold)'),type = QgsProcessingParameterNumber.Integer, defaultValue = None, optional = True, minValue = 0))
         self.addOutput(QgsProcessingOutputVectorLayer(self.OUTPUT, self.tr('Possible Duplicates')))
 
     def processAlgorithm(self, parameters, context, feedback):
