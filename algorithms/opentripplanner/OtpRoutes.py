@@ -94,22 +94,22 @@ class OtpRoutes(QgsProcessingAlgorithm):
                 self.SOURCE_LYR, self.tr('Sourcelayer')))
         self.addParameter(
             QgsProcessingParameterField(
-                self.STARTLAT_FIELD, self.tr('Field containing Latitude of Startpoint'),'Start_Lat','SOURCE_LYR'))
+                self.STARTLAT_FIELD, self.tr('Field containing Latitude of Startpoint'), defaultValue = 'Start_Lat', parentLayerParameterName = 'SOURCE_LYR'))
         self.addParameter(
             QgsProcessingParameterField(
-                self.STARTLON_FIELD, self.tr('Field containing Longitude of Startpoint'),'Start_Lon','SOURCE_LYR'))
+                self.STARTLON_FIELD, self.tr('Field containing Longitude of Startpoint'), defaultValue = 'Start_Lon', parentLayerParameterName = 'SOURCE_LYR'))
         self.addParameter(
             QgsProcessingParameterField(
-                self.ENDLAT_FIELD, self.tr('Field containing Latitude of Endpoint'),'End_Lat','SOURCE_LYR'))
+                self.ENDLAT_FIELD, self.tr('Field containing Latitude of Endpoint'), defaultValue = 'End_Lat', parentLayerParameterName = 'SOURCE_LYR'))
         self.addParameter(
             QgsProcessingParameterField(
-                self.ENDLON_FIELD, self.tr('Field containing Longitude of Endpoint'),'End_Lon','SOURCE_LYR'))
+                self.ENDLON_FIELD, self.tr('Field containing Longitude of Endpoint'), defaultValue = 'End_Lon', parentLayerParameterName = 'SOURCE_LYR'))
         self.addParameter(
             QgsProcessingParameterField(
-                self.DATE_FIELD, self.tr('Field containing Date of Tripstart (or Tripend)'),'Start_date','SOURCE_LYR'))
+                self.DATE_FIELD, self.tr('Field containing Date of Tripstart (or Tripend)'), defaultValue = 'Start_date', parentLayerParameterName = 'SOURCE_LYR'))
         self.addParameter(
             QgsProcessingParameterField(
-                self.TIME_FIELD, self.tr('Field containing Time of Tripstart (or Tripend)'),'Start_time','SOURCE_LYR'))
+                self.TIME_FIELD, self.tr('Field containing Time of Tripstart (or Tripend)'), defaultValue = 'Start_time', parentLayerParameterName = 'SOURCE_LYR'))
         self.addParameter(
             QgsProcessingParameterEnum(
                 self.MODE, self.tr('Travelmode for Routes'),
@@ -123,7 +123,7 @@ class OtpRoutes(QgsProcessingAlgorithm):
                 self.ADDITIONAL_PARAMS, self.tr('Additional Parameters as String, beginning with an & Sign'),'&triangleTimeFactor=0.34&triangleSlopeFactor=0.32&triangleSafetyFactor=0.34',optional=True))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.ITERINARIES, self.tr('Number of Iterinaries'),type=0,defaultValue=1,minValue=1))
+                self.ITERINARIES, self.tr('Number of Iterinaries'), type=QgsProcessingParameterNumber.Integer, defaultValue=1, minValue=1))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('OTP Routes'))) # Output

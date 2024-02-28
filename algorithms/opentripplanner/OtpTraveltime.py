@@ -86,7 +86,7 @@ class OtpTraveltime(QgsProcessingAlgorithm):
                 self.ADDITIONAL_PARAMS, self.tr('Additional Parameters as String, beginning with an & Sign'),'&maxTransfers=6&maxWalkDistance=10000&maxOffroadDistance=500',optional=True))
         self.addParameter(
             QgsProcessingParameterNumber(
-                self.ITERINARIES, self.tr('Number of Iterinaries'),type=0,defaultValue=1,minValue=1))
+                self.ITERINARIES, self.tr('Number of Iterinaries'),type=QgsProcessingParameterNumber.Integer,defaultValue=1,minValue=1))
         self.addParameter(
             QgsProcessingParameterFeatureSink(
                 self.OUTPUT, self.tr('OTP Traveltime'))) # Output
