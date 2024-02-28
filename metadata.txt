@@ -6,7 +6,7 @@
 name=ProcessX
 qgisMinimumVersion=3.28
 description=This Plug-In adds a new processing provider to QGIS. It contains a great variety of different processing algorithms.
-version=1.7
+version=1.7.1
 author=Mario Koenigbauer
 email=mkoenigb@gmx.de
 
@@ -21,6 +21,9 @@ repository=https://github.com/mkoenigb/ProcessX
 hasProcessingProvider=yes
 # Uncomment the following line and add your changelog:
 changelog=
+    v1.7.1
+	Improvements:
+	- Updated type parameters in QgsProcessingParameterNumber() and QgsProcessingParameterField() to requirements of QGIS v3.36
     v1.7
     Added algorithms:
     - Extend Lines To Nearest Points By Condition
